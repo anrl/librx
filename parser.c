@@ -127,20 +127,23 @@ atom (Rx *rx, const char *pos, const char **end) {
     }
     while (isspace(*pos))
         pos++;
-    /* TODO Clean this up with a case for each. It will be clearer.  */
-    if (*pos == '*' || *pos == '+' || *pos == '?') {
+    if (*pos == '*') {
         Transition *t = calloc(1, sizeof (Transition));
-        t->type = NOCHAR;
-        if (*pos == '?') {
-            t->to = rx->head;
-            head->transitions = list_push(head->transitions, t);
-        }
-        else {
-            t->to = head;
-            rx->head->transitions = list_push(rx->head->transitions, t);
-        }
-        if (*pos == '*')
-            rx->head = head;
+        t->to = head;
+        rx->head->transitions = list_push(rx->head->transitions, t);
+        rx->head = head;
+        pos++;
+    }
+    else if (*pos == '+') {
+        Transition *t = calloc(1, sizeof (Transition));
+        t->to = head;
+        rx->head->transitions = list_push(rx->head->transitions, t);
+        pos++;
+    }
+    else if (*pos == '?') {
+        Transition *t = calloc(1, sizeof (Transition));
+        t->to = rx->head;
+        head->transitions = list_push(head->transitions, t);
         pos++;
     }
     *end = pos;
