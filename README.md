@@ -22,32 +22,14 @@ DESCRIPTION
 
 This regular expression library is based on a Thompson NFA rather than a
 backtracking NFA. I originally read about Thompson's NFA in Russ Cox's article,
-"Regular Expression Matching Can Be Simple And Fast" at
-http://swtch.com/~rsc/regexp/regexp1.html. It also uses some syntactic features
-found in Perl 6 which is described at http://perlcabal.org/syn/S05.html.
+["Regular Expression Matching Can Be Simple And Fast"][rsc]. It also uses some
+syntactic features found in Perl 6 [Synopse 05][s5].
+
+[rsc]: http://swtch.com/~rsc/regexp/regexp1.html
+[s5]: http://perlcabal.org/syn/S05.html
 
 During a match all possible paths are explored until there are no paths left or
 no characters left in the string.
-
-FEATURES
-========
-
--   Insignificant whitespace
-
-    The following are equivalent: ``/a b/`` and ``/      ab        /``
-
--   Extensible metasyntax
-
-    In classic Perl regex ``(?...)`` can add special features. Anything that would
-    have been implemented this way will be implemented with angled
-    brackets: ``<...>``. Currently it only supports referencing subpatterns.
-
--   Recursive subpatterns
-
-    You can refer to the pattern in previous groups by referencing them as a
-    number in the extensible meta syntax. ``/(cool)<0>/``.
-    
--   Syntax section has more
 
 FUNCTIONS
 =========
@@ -75,10 +57,13 @@ FUNCTIONS
 SYNTAX
 ======
 
-Many normal regex features are supported.
+Many regex features that one may expect are supported.
 
 An alphanumeric character, '_', or '-' will match itself. All other characters
 need to be escaped with a backslash.
+
+Note that in C, double quoted strings interpolate escapes, so you have to
+escape all backslashes before sending them to rx_new().
 
 You may quote a string of characters with single (``'``) or double (``"``)
 quotes and its contents will match unaltered. There is no difference between
@@ -95,5 +80,14 @@ Each atom may have a repetition specifier after it.
 -   ``+`` matches 1 or more times
 -   ``?`` matches 0 or 1 times
 
-TODO more of this...
+You may group a portion of the regex in parentheses ``(`` which may be used as
+any other atom.
+
+You can refer to the pattern in previous groups by referencing them as a number
+in the extensible meta syntax. ``/(cool)<0>/``. These can even refer to its own
+group recursively.
+
+An extensible meta-syntax of the form ``<...>`` has been added to implement
+special features much like the class Perl construct of ``(?...)``. Currently it
+only supports referencing subpatterns.
 
