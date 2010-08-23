@@ -54,6 +54,10 @@ main () {
     rx_like   ("hoothoothoot", "(hoot)<0>+", "subpattern");
     rx_unlike ("hootasdf", "(hoot)<0>+", "subpattern no match");
     rx_like   ("ExxExxx3E33", "(E(x)*<0>*3)", "recursive subpattern");
+    rx_like   ("file.txt", "file\\.txt", "escape");
+    rx_unlike ("file~txt", "file\\.txt", "escape no match");
+    rx_like   ("kupo! kupo!", "kupo\\!\\ kupo\\!", "escape bangs and spaces");
+    rx_like   ("Do you\nremember me?", "Do \\  you \\n remember \\  me \\?", "escape newline");
     return exit_status();
 }
 

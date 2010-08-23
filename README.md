@@ -78,7 +78,7 @@ SYNTAX
 Many normal regex features are supported.
 
 An alphanumeric character, '_', or '-' will match itself. All other characters
-need to be escaped with a backslash (unimplemented).
+need to be escaped with a backslash.
 
 You may quote a string of characters with single (``'``) or double (``"``)
 quotes and its contents will match unaltered. There is no difference between

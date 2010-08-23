@@ -18,6 +18,7 @@ integer (Rx *rx, const char *pos, const char **end) {
     return 1;
 }
 
+/* TODO change to metasyntax */
 static int
 meta (Rx *rx, const char *pos, const char **end) {
     /* meta: '<' <integer> '>'  */
@@ -95,21 +96,47 @@ group (Rx *rx, const char *pos, const char **end) {
 }
 
 static int
+escape (Rx *rx, const char *pos, const char **end) {
+    /* escape: '\' (<-[a..z0..9_-]> | 'n' | 't')  */
+    State *state;
+    Transition *t;
+    if (*pos++ != '\\')
+        return 0;
+    if ((isalnum(*pos) || *pos == '_' || *pos == '-') && *pos != 'n' &&
+        *pos != 't')
+        return 0;
+    state = calloc(1, sizeof (State));
+    t = calloc(1, sizeof (Transition));
+    rx->states = list_push(rx->states, state);
+    t->type = CHAR;
+    t->c = *pos == 'n' ? '\n' : *pos == 't' ? '\t' : *pos;
+    t->to = state;
+    rx->head->transitions = list_push(rx->head->transitions, t);
+    rx->head = state;
+    *end = ++pos;
+    return 1;
+}
+
+static int
 atom (Rx *rx, const char *pos, const char **end) {
-    /* atom: (<[A-Za-z_-]> | '.' | <group> | <meta>) ('?' | '*' | '+')?  */
+    /* atom: (<[a..z0..9_-]> | <escape> | '.' | <group> | <meta>)
+             ('?' | '*' | '+')?  */
     State *head = rx->head;
     while (isspace(*pos))
         pos++;
     if (isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.') {
         State *s = calloc(1, sizeof (State));
-        rx->states = list_push(rx->states, s);
         Transition *t = calloc(1, sizeof (Transition));
+        rx->states = list_push(rx->states, s);
         t->type = *pos == '.' ? ANYCHAR : CHAR;
         t->c = *pos;
         t->to = s;
         rx->head->transitions = list_push(rx->head->transitions, t);
         rx->head = s;
         pos++;
+    }
+    else if (escape(rx, pos, end)) {
+        pos = *end;
     }
     else if (group(rx, pos, end)) {
         if (rx->error)
