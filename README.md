@@ -91,3 +91,7 @@ An extensible meta-syntax of the form ``<...>`` has been added to implement
 special features much like the class Perl construct of ``(?...)``. Currently it
 only supports referencing subpatterns.
 
+The '.' character really matches any character. If you want everything but a
+newline, use \N. Also, there are escapes \T and \R for anything but \t and \r.
+
+
