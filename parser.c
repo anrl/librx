@@ -119,9 +119,43 @@ escape (Rx *rx, const char *pos, const char **end) {
 }
 
 static int
+quote (Rx *rx, const char *pos, const char **end) {
+    /* quote: '"' (<-["]> | <escape>)* '"' | "'" <-[']>* "'" */
+    char delimeter;
+    if (*pos != '"' && *pos != '\'')
+        return 0;
+    delimeter = *pos;
+    pos++;
+    while (1) {
+        if (delimeter == '"' && escape(rx, pos, end)) {
+            pos = *end;
+        }
+        else if (*pos && *pos != delimeter) {
+            State *state = calloc(1, sizeof (State));
+            Transition *t = calloc(1, sizeof (Transition));
+            rx->states = list_push(rx->states, state);
+            t->type = CHAR;
+            t->c = *pos;
+            t->to = state;
+            rx->head->transitions = list_push(rx->head->transitions, t);
+            rx->head = state;
+            pos++;
+        }
+        else
+            break;
+    }
+    if (*pos != delimeter) {
+        rx->error = strdupf("expected %c at '%s'", delimeter, pos);
+        return -1;
+    }
+    *end = ++pos;
+    return 1;
+}
+
+static int
 atom (Rx *rx, const char *pos, const char **end) {
-    /* atom: (<[a..z0..9_-]> | <escape> | '.' | <group> | <metasyntax>)
-             ('?' | '*' | '+')?  */
+    /* atom: (<[a..zA..Z0..9_-]> | <escape> | '.' | <group> | <metasyntax> |
+              <quote>) ('?' | '*' | '+')?  */
     State *head = rx->head;
     while (isspace(*pos))
         pos++;
@@ -145,6 +179,11 @@ atom (Rx *rx, const char *pos, const char **end) {
         pos = *end;
     }
     else if (metasyntax(rx, pos, end)) {
+        if (rx->error)
+            return -1;
+        pos = *end;
+    }
+    else if (quote(rx, pos, end)) {
         if (rx->error)
             return -1;
         pos = *end;

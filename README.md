@@ -94,4 +94,9 @@ only supports referencing subpatterns.
 The '.' character really matches any character. If you want everything but a
 newline, use \N. Also, there are escapes \T and \R for anything but \t and \r.
 
+Literal strings may be quoted with either single or double quotes. single
+quotes do not allow for escapes, while double quotes do. For example,
+``'.*.*.<>.*.*.'`` will match the string ``".*.*.<>.*.*."``.
+
+
 

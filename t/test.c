@@ -60,6 +60,10 @@ main () {
     rx_like   ("Do you\nremember me?", "Do \\  you \\n remember \\  me \\?", "escape newline");
     rx_like   ("Wark!", "\\N\\T\\N+", "negated character");
     rx_unlike ("Kw\neh!", "\\N\\T\\N+", "negated character no match");
+    rx_like   ("The world is veiled in darkness.", "'The world is'", "single quotes");
+    rx_like   ("***Weezy blog***", "'***Weezy blog***'", "yet another single quotes");
+    rx_unlike ("nothing like it", "'like this'", "single quotes no match");
+    rx_like   ("The <wind> stops", "....\"<wind>\"", "double quotes");
     return exit_status();
 }
 
