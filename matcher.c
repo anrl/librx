@@ -72,6 +72,8 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
         Path *next;
         if (t->type == CHAR && t->c != *pos)
             continue;
+        if (t->type == NEGCHAR && t->c == *pos)
+            continue;
         next = calloc(1, sizeof (Path));
         next->state = t->to;
         next->from = path;

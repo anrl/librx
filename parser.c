@@ -12,9 +12,8 @@ integer (Rx *rx, const char *pos, const char **end) {
         pos++;
     if (!isdigit(*pos))
         return 0;
-    while (isdigit(*pos++)) {
+    while (isdigit(*pos++))
         *end = pos;
-    }
     return 1;
 }
 
@@ -97,19 +96,22 @@ group (Rx *rx, const char *pos, const char **end) {
 
 static int
 escape (Rx *rx, const char *pos, const char **end) {
-    /* escape: '\' (<-[a..z0..9_-]> | 'n' | 't')  */
+    /* escape: '\' (<-[a..zA..Z0..9_-] +[nNrRtT]>)  */
     State *state;
     Transition *t;
+    char c;
     if (*pos++ != '\\')
         return 0;
-    if ((isalnum(*pos) || *pos == '_' || *pos == '-') && *pos != 'n' &&
-        *pos != 't')
-        return 0;
+    if (!(isalnum(*pos) || *pos == '_' || *pos == '-')) c = *pos;
+    else if (tolower(*pos) == 'n') c = '\n';
+    else if (tolower(*pos) == 'r') c = '\r';
+    else if (tolower(*pos) == 't') c = '\t';
+    else return 0;
     state = calloc(1, sizeof (State));
     t = calloc(1, sizeof (Transition));
     rx->states = list_push(rx->states, state);
-    t->type = CHAR;
-    t->c = *pos == 'n' ? '\n' : *pos == 't' ? '\t' : *pos;
+    t->type = isupper(*pos) ? NEGCHAR : CHAR;
+    t->c = c;
     t->to = state;
     rx->head->transitions = list_push(rx->head->transitions, t);
     rx->head = state;

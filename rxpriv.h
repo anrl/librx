@@ -34,7 +34,8 @@ typedef struct {
 typedef enum {
     NOCHAR,   /* gets you from one state to another but eats nothing  */
     ANYCHAR,  /* eats any char (.)  */
-    CHAR      /* eats one char  */
+    CHAR,     /* eats one char  */
+    NEGCHAR   /* eats anything but a char  */
 } TransitionType;
 
 typedef struct {

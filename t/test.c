@@ -58,6 +58,8 @@ main () {
     rx_unlike ("file~txt", "file\\.txt", "escape no match");
     rx_like   ("kupo! kupo!", "kupo\\!\\ kupo\\!", "escape bangs and spaces");
     rx_like   ("Do you\nremember me?", "Do \\  you \\n remember \\  me \\?", "escape newline");
+    rx_like   ("Wark!", "\\N\\T\\N+", "negated character");
+    rx_unlike ("Kw\neh!", "\\N\\T\\N+", "negated character no match");
     return exit_status();
 }
 
