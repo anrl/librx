@@ -19,7 +19,7 @@ matcher.o: matcher.c rx.h rxpriv.h
 rxtry: rxtry.o rx.a
 rxtry.o: rxtry.c rx.h
 
-test:
+test: t
 	./t/test
 
 memcheck:

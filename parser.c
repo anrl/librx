@@ -17,10 +17,9 @@ integer (Rx *rx, const char *pos, const char **end) {
     return 1;
 }
 
-/* TODO change to metasyntax */
 static int
-meta (Rx *rx, const char *pos, const char **end) {
-    /* meta: '<' <integer> '>'  */
+metasyntax (Rx *rx, const char *pos, const char **end) {
+    /* metasyntax: '<' <integer> '>'  */
     int subpattern;
     State *endstate;
     Transition *t;
@@ -121,7 +120,7 @@ escape (Rx *rx, const char *pos, const char **end) {
 
 static int
 atom (Rx *rx, const char *pos, const char **end) {
-    /* atom: (<[a..z0..9_-]> | <escape> | '.' | <group> | <meta>)
+    /* atom: (<[a..z0..9_-]> | <escape> | '.' | <group> | <metasyntax>)
              ('?' | '*' | '+')?  */
     State *head = rx->head;
     while (isspace(*pos))
@@ -145,7 +144,7 @@ atom (Rx *rx, const char *pos, const char **end) {
             return -1;
         pos = *end;
     }
-    else if (meta(rx, pos, end)) {
+    else if (metasyntax(rx, pos, end)) {
         if (rx->error)
             return -1;
         pos = *end;
