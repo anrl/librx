@@ -12,6 +12,7 @@ rx_free (Rx *rx) {
     list_free(rx->captures, rx_free);
     list_free(rx->clusters, rx_free);
     list_free(rx->subrules, rx_free);
+    list_free(rx->extends, NULL);
     free(rx);
 }
 
