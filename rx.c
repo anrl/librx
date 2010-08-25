@@ -9,9 +9,15 @@ Perl 5, and Perl 6. */
 void
 rx_free (Rx *rx) {
     list_free(rx->states, state_free);
-    list_free(rx->groups, NULL);
-    free(rx->error);
+    list_free(rx->captures, rx_free);
+    list_free(rx->clusters, rx_free);
+    list_free(rx->subrules, rx_free);
     free(rx);
+}
+
+void
+rx_extends (Rx *rx, Rx *parent) {
+    rx->extends = list_push(rx->extends, parent);
 }
 
 void

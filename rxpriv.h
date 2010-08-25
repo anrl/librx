@@ -29,6 +29,7 @@ List *list_remove    (List *list, void *data, int (*cmpfunc) (),
 /* state  */
 typedef struct {
     List *transitions;
+    Rx *group;
 } State;
 
 typedef enum {
@@ -45,15 +46,20 @@ typedef struct {
     char c;
 } Transition;
 
+State *state_new (Rx *rx);
 void state_free (State *state);
+Transition *transition_new (State *from, State *to);
 
 /* parser  */
 struct Rx {
+    List *extends;
+    char *name;
     State *start;
-    State *head;
-    List *groups;
+    State *end;
     List *states;
-    char *error;
+    List *captures;
+    List *clusters;
+    List *subrules;
 };
 
 /* rx  */

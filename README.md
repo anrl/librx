@@ -67,8 +67,8 @@ escape all backslashes before sending them to rx_new().
 
 You may quote a string of characters with single (``'``) or double (``"``)
 quotes and its contents will match unaltered. There is no difference between
-single and double quotes except you have the escape the delimeter you use.
-for example ``'\'*\''`` is the same as ``"'*'"`` (unimplemented).
+single and double quotes except double quotes allow for escapes. For example,
+``'*runs away*'`` will match the string ``"*runs away*"``.
 
 All whitespace is insignificant except in quoted forms.
 
@@ -88,15 +88,10 @@ in the extensible meta syntax. ``/(cool)<0>/``. These can even refer to its own
 group recursively.
 
 An extensible meta-syntax of the form ``<...>`` has been added to implement
-special features much like the class Perl construct of ``(?...)``. Currently it
+special features much like the Perl construct of ``(?...)``. Currently it
 only supports referencing subpatterns.
 
 The '.' character really matches any character. If you want everything but a
 newline, use \N. Also, there are escapes \T and \R for anything but \t and \r.
-
-Literal strings may be quoted with either single or double quotes. single
-quotes do not allow for escapes, while double quotes do. For example,
-``'.*.*.<>.*.*.'`` will match the string ``".*.*.<>.*.*."``.
-
 
 
