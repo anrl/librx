@@ -63,15 +63,23 @@ metasyntax (Parser *p, const char *pos, const char **fin) {
 
 static int
 group (Parser *p, const char *pos, const char **fin) {
-    /* group: '(' <disjunction> ')'  */
+    /* group: '(' <disjunction> ')' | '[' <disjunction> ']'  */
     Rx *orig = p->rx;
     Transition *t;
-    if (*pos++ != '(')
-        return 0;
+    char ldelimeter = *pos++;
+    char rdelimeter;
+    switch (ldelimeter) {
+        case '(': rdelimeter = ')'; break;
+        case '[': rdelimeter = ']'; break;
+        default: return 0;
+    }
     p->rx = calloc(1, sizeof (Rx));
-    orig->captures = list_push(orig->captures, p->rx);
     rx_extends(p->rx, orig);
     p->rx->end = p->rx->start = state_new(p->rx);
+    if (ldelimeter == '(')
+        orig->captures = list_push(orig->captures, p->rx);
+    else
+        orig->clusters = list_push(orig->clusters, p->rx);
     t = transition_new(orig->end, p->rx->start);
     t->back = state_new(orig);
     disjunction(p, pos, fin);
@@ -80,8 +88,8 @@ group (Parser *p, const char *pos, const char **fin) {
     p->rx = orig;
     p->rx->end = t->back;
     pos = *fin;
-    if (*pos != ')') {
-        p->error = strdupf("expected ')' at '%s'", pos);
+    if (*pos != rdelimeter) {
+        p->error = strdupf("expected '%c' at '%s'", rdelimeter, pos);
         return -1;
     }
     *fin = ++pos;

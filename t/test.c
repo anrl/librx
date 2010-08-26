@@ -64,6 +64,16 @@ main () {
     rx_like   ("***Weezy blog***", "'***Weezy blog***'", "yet another single quotes");
     rx_unlike ("nothing like it", "'like this'", "single quotes no match");
     rx_like   ("The <wind> stops", "....\"<wind>\"", "double quotes");
+    rx_like   ("foobar", "  \
+        foo                 \
+        [                   \
+        | foo               \
+        | bar               \
+        | baz               \
+        | quux              \
+        | thud              \
+        ]                   \
+    ", "cluster");
     return exit_status();
 }
 
