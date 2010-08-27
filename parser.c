@@ -25,34 +25,30 @@ integer (Parser *p, const char *pos, const char **fin) {
 
 static int
 metasyntax (Parser *p, const char *pos, const char **fin) {
-    /* metasyntax: '<' <integer> '>'  */
+    /* metasyntax: '<' '~~' <integer>? '>'  */
     Transition *t;
-    Rx *capture_rx;
-    int capture;
     if (*pos++ != '<')
         return 0;
     /* Extensible meta-syntax only supports numbered captures at the moment  */
-    if (!integer(p, pos, fin)) {
-        p->error = strdupf("expected integer at '%s'", pos);
-        return -1;
+    if (*pos++ != '~')
+        return 0;
+    if (*pos++ != '~')
+        return 0;
+    t = transition_new(p->rx->end, NULL);
+    p->rx->end = t->back = state_new(p->rx);
+    if (integer(p, pos, fin)) {
+        int capture = atoi(pos);
+        if (capture < 0) {
+            p->error = strdupf("only non negative integers allowed at '%s'", pos);
+            return -1;
+        }
+        t->type = CLUSTER;
+        t->c = capture;
+        pos = *fin;
     }
-    capture = atoi(pos);
-    if (capture < 0) {
-        p->error = strdupf("only non negative integers allowed at '%s'", pos);
-        return -1;
+    else {
+        t->to = p->top->start;
     }
-    /* Right now its only for captures previously seen in the regex, but if
-    captures are resolved at match time, one could reference captures not yet
-    seen. */
-    if (capture >= list_elems(p->top->captures)) {
-        p->error = strdupf("capture %d does not exist yet '%s'", capture, pos);
-        return -1;
-    }
-    capture_rx = list_nth_data(p->top->captures, capture);
-    t = transition_new(p->rx->end, capture_rx->start);
-    t->back = state_new(p->rx);
-    p->rx->end = t->back;
-    pos = *fin;
     if (*pos != '>') {
         p->error = strdupf("expected '>' at '%s'", pos);
         return -1;

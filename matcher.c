@@ -13,6 +13,7 @@ struct Path {
 
 /* A matcher keeps track of the current state of the match  */
 typedef struct {
+    Rx *rx;
     List *paths;
     List *matches;
 } Matcher;
@@ -74,6 +75,11 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
             continue;
         if (t->type == NEGCHAR && t->c == *pos)
             continue;
+        if (t->type == CLUSTER && !t->to) {
+            Rx *capture = list_nth_data(m->rx->captures, t->c);
+            /* TODO throw error if you dont find the capture  */
+            t->to = capture->start;
+        }
         next = calloc(1, sizeof (Path));
         next->state = t->to;
         next->from = path;
@@ -81,7 +87,7 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
         path->links++;
         if (t->back)
             next->backs = list_push(next->backs, t->back);
-        if (t->type == NOCHAR) {
+        if (t->type == NOCHAR || t->type == CLUSTER) {
             next->pos = pos;
             paths = list_cat(paths, get_next_paths(m, pos, next));
         }
@@ -127,6 +133,7 @@ rx_match (Rx *rx, const char *str) {
     p->state = rx->start;
     p->pos = str;
     m->paths = list_push(m->paths, p);
+    m->rx = rx;
     if (rx_debug)
         printf("matching against '%s'\n", str);
     while (1) {
