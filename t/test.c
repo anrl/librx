@@ -75,6 +75,10 @@ main () {
         ]                   \
     ", "cluster");
     rx_like   ("dark peak", "<~~1><~~0><~~1><~~0> ' ' <~~0><~~0>(p|e|a|k)(d|a|r|k)", "match time capture resolution");
+    rx_like   ("foofoofoo", "foo<~~>*", "overall capture match");
+    skip(1, 1, "errors should not be sent to stdout by default");
+    rx_unlike ("aabb", "a<~~0>", "match error: capture 0 doesn't exist");
+    endskip;
     return exit_status();
 }
 

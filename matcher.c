@@ -15,7 +15,9 @@ struct Path {
 typedef struct {
     Rx *rx;
     List *paths;
+    List *next_paths;
     List *matches;
+    char *error;
 } Matcher;
 
 static void
@@ -33,16 +35,17 @@ static void
 matcher_free (Matcher *m) {
     if (!m)
         return;
+    list_free(m->next_paths, path_unref);
     list_free(m->paths, path_unref);
     list_free(m->matches, path_unref);
+    free(m->error);
     free(m);
 }
 
 /* Increments one particular path by a character and return a new list of
-paths for it.  */
-static List *
+paths for it in m->next_paths.  */
+static void
 get_next_paths (Matcher *m, const char *pos, Path *path) {
-    List *paths = NULL;
     List *telem;
 
     /* reference path for the duration of the function  */
@@ -60,7 +63,9 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
             next->pos = pos;
             next->from = path;
             path->links++;
-            paths = list_cat(paths, get_next_paths(m, pos, next));
+            get_next_paths(m, pos, next);
+            if (m->error)
+                return;
         }
         else {
             /* end state  */
@@ -77,7 +82,10 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
             continue;
         if (t->type == CLUSTER && !t->to) {
             Rx *capture = list_nth_data(m->rx->captures, t->c);
-            /* TODO throw error if you dont find the capture  */
+            if (!capture) {
+                m->error = strdupf("capture %d not found", t->c);
+                return;
+            }
             t->to = capture->start;
         }
         next = calloc(1, sizeof (Path));
@@ -89,15 +97,16 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
             next->backs = list_push(next->backs, t->back);
         if (t->type == NOCHAR || t->type == CLUSTER) {
             next->pos = pos;
-            paths = list_cat(paths, get_next_paths(m, pos, next));
+            get_next_paths(m, pos, next);
+            if (m->error)
+                return;
         }
         else {
             next->pos = pos + 1;
-            paths = list_push(paths, next);
+            m->next_paths = list_push(m->next_paths, next);
         }
     }
     path_unref(path);
-    return paths;
 }
 
 static void
@@ -137,16 +146,19 @@ rx_match (Rx *rx, const char *str) {
     if (rx_debug)
         printf("matching against '%s'\n", str);
     while (1) {
-        List *nextpaths = NULL;
         List *elem;
         for (elem = m->paths; elem; elem = elem->next) {
             Path *path = elem->data;
-            nextpaths = list_cat(
-                nextpaths,
-                get_next_paths(m, pos, path));
+            get_next_paths(m, pos, path);
+            if (m->error) {
+                fprintf(stderr, "%s\n", m->error);
+                matcher_free(m);
+                return 0;
+            }
         }
         list_free(m->paths, NULL);
-        m->paths = nextpaths;
+        m->paths = m->next_paths;
+        m->next_paths = NULL;
         if (rx_debug)
             paths_print(m, ++i, str);
         if (!m->paths)
