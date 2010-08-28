@@ -83,15 +83,24 @@ Each atom may have a repetition specifier after it.
 You may group a portion of the regex in parentheses ``(`` which may be used as
 any other atom.
 
-You can refer to the pattern in previous groups by referencing them as a number
-in the extensible meta syntax. ``/(cool)<0>/``. These can even refer to its own
-group recursively.
-
 An extensible meta-syntax of the form ``<...>`` has been added to implement
-special features much like the Perl construct of ``(?...)``. Currently it
-only supports referencing subpatterns.
+special features much like the Perl construct of ``(?...)``.
+
+You can refer to the pattern in previous groups by referencing them as a number
+in the extensible meta syntax. ``/(cool)<~~0>/``. These can even refer to its own
+group recursively. You can refer to the whole pattern by using ``<~~>``.
 
 The '.' character really matches any character. If you want everything but a
 newline, use \N. Also, there are escapes \T and \R for anything but \t and \r.
 
+A character class is specified with <[...]>. For example, ``<[a..z_]>``,
+specifies any character from a to z or _. whitespace is ignored in this
+construct. and you can combine character classes by adding and subtracting
+them. <[a..z] + [\'] - [m..q]>. Negated character classes start with a -,
+<-[aeiou]>, matches anything but a vowel.
+
+The following named character classes are allowed as well: upper, lower, alpha,
+digit, xdigit, print, graph, cntrl, punct, alnum, space, blank, and word. They
+may be combined with + and - just as the bracketed char classes can.
+``<[_] + alpha + punct>``.
 

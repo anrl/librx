@@ -1,4 +1,4 @@
-CFLAGS = -g -O0 -Wall
+CFLAGS = -g -O0 -Wall -Wno-parentheses
 
 %.a:
 	ar rcs $@ $^

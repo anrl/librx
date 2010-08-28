@@ -37,14 +37,22 @@ typedef enum {
     ANYCHAR,  /* eats any char (.)  */
     CHAR,     /* eats one char  */
     NEGCHAR,  /* eats anything but a char  */
-    CLUSTER   /* goes to a cluster  */
+    CLUSTER,  /* goes to a cluster  */
+    CHARCLASS /* eats a char in a char class  */
 } TransitionType;
+
+typedef struct {
+    int not;
+    int (*isfunc) ();
+    char *set;
+} CharClass;
 
 typedef struct {
     TransitionType type;
     State *to;
     State *back;
     char c;
+    List *ccc; /* char class combo  */
 } Transition;
 
 State *state_new (Rx *rx);
@@ -62,6 +70,8 @@ struct Rx {
     List *clusters;
     List *subrules;
 };
+
+int ws (const char *pos, const char **fin);
 
 /* rx  */
 void rx_print (Rx *rx);

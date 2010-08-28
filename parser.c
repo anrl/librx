@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 #include "rxpriv.h"
 
 typedef struct {
     char *error;
     Rx *top;
     Rx *rx;
+    CharClass *cc;
 } Parser;
 
 static int disjunction ();
@@ -24,12 +26,9 @@ integer (Parser *p, const char *pos, const char **fin) {
 }
 
 static int
-metasyntax (Parser *p, const char *pos, const char **fin) {
-    /* metasyntax: '<' '~~' <integer>? '>'  */
+captureref (Parser *p, const char *pos, const char **fin) {
+    /* captureref: '~~' <integer>?  */
     Transition *t;
-    if (*pos++ != '<')
-        return 0;
-    /* Extensible meta-syntax only supports numbered captures at the moment  */
     if (*pos++ != '~')
         return 0;
     if (*pos++ != '~')
@@ -39,7 +38,7 @@ metasyntax (Parser *p, const char *pos, const char **fin) {
     if (integer(p, pos, fin)) {
         int capture = atoi(pos);
         if (capture < 0) {
-            p->error = strdupf("only non negative integers allowed at '%s'", pos);
+            p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
         t->type = CLUSTER;
@@ -48,6 +47,184 @@ metasyntax (Parser *p, const char *pos, const char **fin) {
     }
     else {
         t->to = p->top->start;
+    }
+    *fin = pos;
+    return 1;
+}
+
+/* TODO all white space should use this rule and make it handle comments  */
+int
+ws (const char *pos, const char **fin) {
+    /* ws: \s*  */
+    while (isspace(*pos))
+        pos++;
+    *fin = pos;
+    return 1;
+}
+
+static int
+charclass (Parser *p, const char *pos, const char **fin) {
+    /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
+                  xdigit | print | graph | cntrl | punct | alnum | space |
+                  blank | word  */
+    if (*pos == '[') {
+        const char *start = ++pos;
+        while (1) {
+            if (!strncmp(pos, "\\]", 2))
+                pos += 2;
+            else if (*pos && *pos != ']')
+                pos++;
+            else
+                break;
+        }
+        if (*pos != ']') {
+            p->error = strdupf("expected ']' at '%s'", pos);
+            return -1;
+        }
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->set = strdupf("%.*s", pos - start, start);
+        pos++;
+    }
+    /* TODO too much copypasta here, this can be much shorter  */
+    else if (!strncmp(pos, "upper", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isupper;
+    }
+    else if (!strncmp(pos, "lower", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = islower;
+    }
+    else if (!strncmp(pos, "alpha", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isalpha;
+    }
+    else if (!strncmp(pos, "digit", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isdigit;
+    }
+    else if (!strncmp(pos, "xdigit", 6)) {
+        pos += 6;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isxdigit;
+    }
+    else if (!strncmp(pos, "print", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isprint;
+    }
+    else if (!strncmp(pos, "graph", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isgraph;
+    }
+    else if (!strncmp(pos, "cntrl", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = iscntrl;
+    }
+    else if (!strncmp(pos, "punct", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = ispunct;
+    }
+    else if (!strncmp(pos, "alnum", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isalnum;
+    }
+    else if (!strncmp(pos, "space", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isspace;
+    }
+    else if (!strncmp(pos, "blank", 5)) {
+        pos += 5;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->isfunc = isblank;
+    }
+    else if (!strncmp(pos, "word", 4)) {
+        pos += 4;
+        p->cc = calloc(1, sizeof (CharClass));
+        p->cc->set = strdup("a..zA..Z0..9_-");
+    }
+    else
+        return 0;
+    *fin = pos;
+    return 1;
+}
+
+static int
+charclasscombo (Parser *p, const char *pos, const char **fin) {
+    /* charclasscombo: <[+-]>? <charclass> (<[+-]> <charclass>)*  */
+    Transition *t = NULL;
+    int not = 0;
+    if (*pos == '+' || *pos == '-') {
+        not = *pos == '-';
+        pos++;
+        ws(pos, &pos);
+    }
+    if (charclass(p, pos, fin)) {
+        if (p->error)
+            return -1;
+        pos = *fin;
+        t = transition_new(p->rx->end, state_new(p->rx));
+        t->type = CHARCLASS;
+        p->cc->not = not;
+        t->ccc = list_push(t->ccc, p->cc);
+        p->rx->end = t->to;
+    }
+    else {
+        return 0;
+    }
+    while (1) {
+        ws(pos, &pos);
+        if (*pos == '+')
+            not = 0;
+        else if (*pos == '-')
+            not = 1;
+        else
+            break;
+        pos++;
+        ws(pos, &pos);
+        if (charclass(p, pos, fin)) {
+            if (p->error)
+                return -1;
+            pos = *fin;
+            p->cc->not = not;
+            t->ccc = list_push(t->ccc, p->cc);
+        }
+        else {
+            p->error = strdupf("expected charclass at '%s'", pos);
+            return -1;
+        }
+    }
+    ws(pos, &pos);
+    *fin = pos;
+    return 1;
+}
+
+static int
+metasyntax (Parser *p, const char *pos, const char **fin) {
+    /* metasyntax: '<' (<captureref> | <charclasscombo>) '>'  */
+    if (*pos++ != '<')
+        return 0;
+    if (captureref(p, pos, fin)) {
+        if (p->error)
+            return -1;
+        pos = *fin;
+    }
+    else if (charclasscombo(p, pos, fin)) {
+        if (p->error)
+            return -1;
+        pos = *fin;
+    }
+    else {
+        p->error = strdupf("unrecognized metasyntax at '%s'", pos);
+        return -1;
     }
     if (*pos != '>') {
         p->error = strdupf("expected '>' at '%s'", pos);
@@ -94,7 +271,7 @@ group (Parser *p, const char *pos, const char **fin) {
 
 static int
 escape (Parser *p, const char *pos, const char **fin) {
-    /* escape: '\' (<-[a..zA..Z0..9_-] +[nNrRtT]>)  */
+    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtT]>  */
     Transition *t;
     char c;
     if (*pos++ != '\\')

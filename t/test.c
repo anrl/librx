@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <tap.h>
-#include "../rx.h"
+#include "../rxpriv.h"
 
 #define rx_like(...)   rx_like_at_loc(1, __FILE__, __LINE__, __VA_ARGS__, NULL)
 #define rx_unlike(...) rx_like_at_loc(0, __FILE__, __LINE__, __VA_ARGS__, NULL)
@@ -35,12 +35,12 @@ main () {
     rx_unlike ("a", "b", "one character no match");
     rx_like   ("frob", "frob", "multichar match");
     rx_unlike ("frob", "nicate", "multichar no match");
-    rx_like   ("abbbbc", "ab*c", "* repetition");
-    rx_unlike ("abbbbxc", "ab*c", "* repetition no match");
-    rx_like   ("abbbbc", "ab+c", "+ repetition");
-    rx_unlike ("ac", "ab+c", "+ repetition no match");
-    rx_like   ("abc", "ab?c", "? repetition");
-    rx_unlike ("abbc", "ab?c", "? repetition no match");
+    rx_like   ("abbbbc", "ab*c", "* quantifier");
+    rx_unlike ("abbbbxc", "ab*c", "* quantifier no match");
+    rx_like   ("abbbbc", "ab+c", "+ quantifier");
+    rx_unlike ("ac", "ab+c", "+ quantifier no match");
+    rx_like   ("abc", "ab?c", "? quantifier");
+    rx_unlike ("abbc", "ab?c", "? quantifier no match");
     rx_like   ("abcd", ".", "any char");
     rx_unlike ("", ".", "any char no match");
     rx_like   ("abcd", "...", "multiple any chars");
@@ -79,6 +79,13 @@ main () {
     skip(1, 1, "errors should not be sent to stdout by default");
     rx_unlike ("aabb", "a<~~0>", "match error: capture 0 doesn't exist");
     endskip;
+    rx_like   ("R", "<[A..Z]>", "char class");
+    rx_unlike ("r", "<[A..Z]>", "char class no match");
+    rx_like   ("overall the same", "<alpha>+<space>+<alpha>+", "named char classes");
+    rx_unlike ("overall the same", "<upper>+<space>+<upper>+", "named char classes no match");
+    rx_like   ("couldn't see the future", "<[c..u]>*<[\\']>", "backslash in char class");
+    rx_like   ("Thats-a-right I'm Don", "<alpha + [-]>+ ' ' I\\'m", "char class combo");
+    rx_unlike ("Thats-a-right I'm Don", "<alpha + [_]>+ ' ' I\\'m", "char class combo no match");
     return exit_status();
 }
 

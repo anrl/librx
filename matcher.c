@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 #include "rxpriv.h"
 
 typedef struct Path Path;
@@ -40,6 +42,83 @@ matcher_free (Matcher *m) {
     list_free(m->matches, path_unref);
     free(m->error);
     free(m);
+}
+
+/* TODO better escape matching \t \n \r \s \w etc.. and you shouldnt have to
+escape as much here ', ", :, ; should all be unescaped  */
+static int
+ccatom (const char *pos, const char **fin, char *atom) {
+    /* ccatom: <[a..zA..Z0..9_-]> | '\' . */
+    if (isalnum(*pos) || *pos == '_' || *pos == '-') {
+        *atom = pos[0];
+        pos++;
+    }
+    else if (pos[0] == '\\' && pos[1]) {
+        *atom = pos[1];
+        pos += 2;
+    }
+    else
+        return 0;
+    *fin = pos;
+    return 1;
+}
+
+/* returns true if c is in the character class given in set  */
+static int
+isincc (Matcher *m, char c, const char *set) {
+    /* set: <ccatom> '..' <ccatom> | <ccatom>  */
+    char atom1, atom2;
+    const char *fin;
+    while (1) {
+        ws(set, &set);
+        if (ccatom(set, &fin, &atom1) &&
+            ws(fin, &fin) &&
+            !strncmp(fin, "..", 2) &&
+            ws(fin + 2, &fin) &&
+            ccatom(fin, &fin, &atom2))
+        {
+            if (atom2 <= atom1) {
+                m->error = strdupf("invalid char class range at '%s'", set);
+                return -1;
+            }
+            if (c >= atom1 && c <= atom2)
+                return 1;
+            set = fin;
+        }
+        else if (ccatom(set, &fin, &atom1)) {
+            if (c == atom1)
+                return 1;
+            set = fin;
+        }
+        else if (*set) {
+            m->error = strdupf("invalid char class syntax at '%s'", set);
+            return -1;
+        }
+        else
+            break;
+    }
+    return 0;
+}
+
+/* Match a character class combo such as <punct + alpha - [a..f] - [\,]> */
+static int
+ccc_match (Matcher *m, List *ccc, char c) {
+    int match;
+    CharClass *cc;
+    List *elem;
+    if (!ccc)
+        return 0;
+    cc = ccc->data;
+    match = cc->not;
+    for (elem = ccc; elem; elem = elem->next) {
+        cc = elem->data;
+        if (!cc->set && cc->isfunc(c) ||
+             cc->set && isincc(m, c, cc->set))
+            match = cc->not ? 0 : 1;
+        if (m->error)
+            return -1;
+    }
+    return match;
 }
 
 /* Increments one particular path by a character and return a new list of
@@ -88,6 +167,10 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
             }
             t->to = capture->start;
         }
+        if (t->type == CHARCLASS && !ccc_match(m, t->ccc, *pos))
+            continue;
+        if (m->error)
+            return;
         next = calloc(1, sizeof (Path));
         next->state = t->to;
         next->from = path;
