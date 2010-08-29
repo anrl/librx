@@ -63,6 +63,20 @@ ws (const char *pos, const char **fin) {
 }
 
 static int
+namedcharclass (Parser *p, const char **pos, const char *name,
+                int (*isfunc) (), const char *set)
+{
+    int len = strlen(name);
+    if (strncmp(*pos, name, len))
+        return 0;
+    *pos += len;
+    p->cc = calloc(1, sizeof (CharClass));
+    p->cc->isfunc = isfunc;
+    p->cc->set = set ? strdup(set) : NULL;
+    return 1;
+}
+
+static int
 charclass (Parser *p, const char *pos, const char **fin) {
     /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
                   xdigit | print | graph | cntrl | punct | alnum | space |
@@ -85,72 +99,19 @@ charclass (Parser *p, const char *pos, const char **fin) {
         p->cc->set = strdupf("%.*s", pos - start, start);
         pos++;
     }
-    /* TODO too much copypasta here, this can be much shorter  */
-    else if (!strncmp(pos, "upper", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isupper;
-    }
-    else if (!strncmp(pos, "lower", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = islower;
-    }
-    else if (!strncmp(pos, "alpha", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isalpha;
-    }
-    else if (!strncmp(pos, "digit", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isdigit;
-    }
-    else if (!strncmp(pos, "xdigit", 6)) {
-        pos += 6;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isxdigit;
-    }
-    else if (!strncmp(pos, "print", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isprint;
-    }
-    else if (!strncmp(pos, "graph", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isgraph;
-    }
-    else if (!strncmp(pos, "cntrl", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = iscntrl;
-    }
-    else if (!strncmp(pos, "punct", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = ispunct;
-    }
-    else if (!strncmp(pos, "alnum", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isalnum;
-    }
-    else if (!strncmp(pos, "space", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isspace;
-    }
-    else if (!strncmp(pos, "blank", 5)) {
-        pos += 5;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->isfunc = isblank;
-    }
-    else if (!strncmp(pos, "word", 4)) {
-        pos += 4;
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->set = strdup("a..zA..Z0..9_-");
-    }
+    else if (namedcharclass(p, &pos, "upper",  isupper,  NULL)) ;
+    else if (namedcharclass(p, &pos, "lower",  islower,  NULL)) ;
+    else if (namedcharclass(p, &pos, "alpha",  isalpha,  NULL)) ;
+    else if (namedcharclass(p, &pos, "digit",  isdigit,  NULL)) ;
+    else if (namedcharclass(p, &pos, "xdigit", isxdigit, NULL)) ;
+    else if (namedcharclass(p, &pos, "print",  isprint,  NULL)) ;
+    else if (namedcharclass(p, &pos, "graph",  isgraph,  NULL)) ;
+    else if (namedcharclass(p, &pos, "cntrl",  iscntrl,  NULL)) ;
+    else if (namedcharclass(p, &pos, "punct",  ispunct,  NULL)) ;
+    else if (namedcharclass(p, &pos, "alnum",  isalnum,  NULL)) ;
+    else if (namedcharclass(p, &pos, "space",  isspace,  NULL)) ;
+    else if (namedcharclass(p, &pos, "blank",  isblank,  NULL)) ;
+    else if (namedcharclass(p, &pos, "word",   NULL,     "a..zA..Z0..9_-")) ;
     else
         return 0;
     *fin = pos;
