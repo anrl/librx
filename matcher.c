@@ -44,21 +44,34 @@ matcher_free (Matcher *m) {
     free(m);
 }
 
-/* TODO better escape matching \t \n \r \s \w etc.. and you shouldnt have to
-escape as much here ', ", :, ; should all be unescaped  */
 static int
 ccatom (const char *pos, const char **fin, char *atom) {
-    /* ccatom: <[a..zA..Z0..9_-]> | '\' . */
-    if (isalnum(*pos) || *pos == '_' || *pos == '-') {
-        *atom = pos[0];
-        pos++;
-    }
-    else if (pos[0] == '\\' && pos[1]) {
+    /* ccatom: '\' <[\[\]\ \\nrt]> | <-space>  */
+    if (pos[0] == '\\' && (
+        pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\'))
+    {
         *atom = pos[1];
         pos += 2;
     }
-    else
+    else if (pos[0] == '\\' && pos[1] == 'n') {
+        *atom = '\n';
+        pos += 2;
+    }
+    else if (pos[0] == '\\' && pos[1] == 'r') {
+        *atom = '\r';
+        pos += 2;
+    }
+    else if (pos[0] == '\\' && pos[1] == 't') {
+        *atom = '\t';
+        pos += 2;
+    }
+    else if (!*pos || isspace(*pos)) {
         return 0;
+    }
+    else {
+        *atom = pos[0];
+        pos++;
+    }
     *fin = pos;
     return 1;
 }

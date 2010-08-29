@@ -86,6 +86,8 @@ main () {
     rx_like   ("couldn't see the future", "<[c..u]>*<[\\']>", "backslash in char class");
     rx_like   ("Thats-a-right I'm Don", "<alpha + [-]>+ ' ' I\\'m", "char class combo");
     rx_unlike ("Thats-a-right I'm Don", "<alpha + [_]>+ ' ' I\\'m", "char class combo no match");
+    rx_like   (":;:", "<[:;]><[:;]><[:;]>", "cc doesnt needs many escapes");
+    rx_like   ("[nightmares]", "'[' <-[\\]]>* ']'", "match brackets with char class");
     return exit_status();
 }
 
