@@ -284,57 +284,130 @@ quote (Parser *p, const char *pos, const char **fin) {
 }
 
 static int
-atom (Parser *p, const char *pos, const char **fin) {
-    /* atom: (<[a..zA..Z0..9_-]> | <escape> | '.' | <group> | <metasyntax> |
-              <quote>) ('?' | '*' | '+')?  */
-    State *start = p->rx->end;
-    while (isspace(*pos))
+character (Parser *p, const char *pos, const char **fin) {
+    /* character: <[a..zA..Z0..9_-.]>  */
+    Transition *t;
+    if (!(isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.'))
+        return 0;
+    t = transition_new(p->rx->end, state_new(p->rx));
+    t->type = *pos == '.' ? ANYCHAR : CHAR;
+    t->c = *pos;
+    p->rx->end = t->to;
+    *fin = ++pos;
+    return 1;
+}
+
+static int
+genquantifier (Parser *p, const char *pos, const char **fin, State *start,
+               State *astart)
+{
+    /* genquantifier: '**' \d+ ('..' (\d+ | '*'))? */
+    int i, min;
+    if (strncmp(pos, "**", 2))
+        return 0;
+    pos += 2;
+    ws(pos, &pos);
+    if (!integer(p, pos, fin)) {
+        p->error = strdupf("expected integer at '%s'", pos);
+        return -1;
+    }
+    min = atoi(pos);
+    if (min < 0) {
+        p->error = strdupf("only non negative ints allowed at '%s'", pos);
+        return -1;
+    }
+    pos = *fin;
+    p->rx->end = start;
+    for (i = 0; i < min; i++) {
+        Transition *t = transition_new(p->rx->end, astart);
+        t->back = p->rx->end = state_new(p->rx);
+    }
+    ws(pos, &pos);
+    *fin = pos;
+    if (strncmp(pos, "..", 2))
+        return 1;
+    pos += 2;
+    ws(pos, &pos);
+    if (integer(p, pos, fin)) {
+        State *end;
+        int max = atoi(pos);
+        if (max <= min) {
+            p->error = strdupf("can't do ** n..m with n >= m at '%s'", pos);
+            return -1;
+        }
+        pos = *fin;
+        transition_new(p->rx->end, end = state_new(p->rx));
+        for (i = 0; i < max - min; i++) {
+            Transition *t = transition_new(p->rx->end, astart);
+            t->back = p->rx->end = state_new(p->rx);
+            transition_new(p->rx->end, end);
+        }
+        p->rx->end = end;
+    }
+    else if (*pos == '*') {
         pos++;
-    if (isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.') {
-        Transition *t = transition_new(p->rx->end, state_new(p->rx));
-        t->type = *pos == '.' ? ANYCHAR : CHAR;
-        t->c = *pos;
-        p->rx->end = t->to;
-        pos++;
-    }
-    else if (escape(p, pos, fin)) {
-        pos = *fin;
-    }
-    else if (group(p, pos, fin)) {
-        if (p->error)
-            return -1;
-        pos = *fin;
-    }
-    else if (metasyntax(p, pos, fin)) {
-        if (p->error)
-            return -1;
-        pos = *fin;
-    }
-    else if (quote(p, pos, fin)) {
-        if (p->error)
-            return -1;
-        pos = *fin;
+        Transition *t = transition_new(p->rx->end, astart);
+        t->back = p->rx->end;
     }
     else {
-        *fin = pos;
+        p->error = strdupf("expected integer or '*' at '%s'", pos);
+        return -1;
+    }
+    *fin = pos;
+    return 1;
+}
+
+static int
+quantifier (Parser *p, const char *pos, const char **fin, State *start,
+            State *astart)
+{
+    /* quantifier: <genquantifier> | '?' | '*' | '+' | ''  */
+    if (genquantifier(p, pos, &pos, start, astart)) {
+        if (p->error)
+            return -1;
+    }
+    else {
+        transition_new(start, astart);
+        if (*pos == '*') {
+            transition_new(p->rx->end, start);
+            p->rx->end = start;
+            pos++;
+        }
+        else if (*pos == '+') {
+            transition_new(p->rx->end, start);
+            pos++;
+        }
+        else if (*pos == '?') {
+            transition_new(start, p->rx->end);
+            pos++;
+        }
+    }
+    *fin = pos;
+    return 1;
+}
+
+static int
+atom (Parser *p, const char *pos, const char **fin) {
+    /* atom: (<character> | <escape> | <group> | <metasyntax> | <quote>)
+             <quantifier>  */
+    State *start = p->rx->end;
+    State *astart = p->rx->end = state_new(p->rx);
+    ws(pos, &pos);
+    if      (character  (p, pos, &pos)) ;
+    else if (escape     (p, pos, &pos)) ;
+    else if (group      (p, pos, &pos)) ;
+    else if (metasyntax (p, pos, &pos)) ;
+    else if (quote      (p, pos, &pos)) ;
+    else {
+        p->rx->end = start;
         return 0;
     }
-    while (isspace(*pos))
-        pos++;
-    /* quantifier  */
-    if (*pos == '*') {
-        transition_new(p->rx->end, start);
-        p->rx->end = start;
-        pos++;
-    }
-    else if (*pos == '+') {
-        transition_new(p->rx->end, start);
-        pos++;
-    }
-    else if (*pos == '?') {
-        transition_new(start, p->rx->end);
-        pos++;
-    }
+    if (p->error)
+        return -1;
+    ws(pos, &pos);
+    quantifier(p, pos, &pos, start, astart);
+    if (p->error)
+        return -1;
     *fin = pos;
     return 1;
 }
@@ -343,14 +416,12 @@ static int
 conjunction (Parser *p, const char *pos, const char **fin) {
     /* conjunction: <atom>*  */
     while (1) {
-        if (atom(p, pos, fin)) {
-            if (p->error)
-                return -1;
-        }
-        else
+        if (!atom(p, pos, &pos))
             break;
-        pos = *fin;
+        if (p->error)
+            return -1;
     }
+    *fin = pos;
     return 1;
 }
 

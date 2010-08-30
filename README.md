@@ -74,11 +74,14 @@ All whitespace is insignificant except in quoted forms.
 
 A ``|`` separates alternate matches.
 
-Each atom may have a repetition specifier after it.
+Each atom may have a quantifier after it.
 
 -   ``*`` matches 0 or more times
 -   ``+`` matches 1 or more times
 -   ``?`` matches 0 or 1 times
+-   ``** n`` matches n times
+-   ``** n..m`` matches at least n times and at most m times
+-   ``** n..*`` matches n or more times
 
 You may group a portion of the regex in parentheses ``(`` which may be used as
 any other atom.

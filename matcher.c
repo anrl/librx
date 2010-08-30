@@ -65,12 +65,12 @@ ccatom (const char *pos, const char **fin, char *atom) {
         *atom = '\t';
         pos += 2;
     }
-    else if (!*pos || isspace(*pos)) {
-        return 0;
-    }
-    else {
+    else if (*pos && !isspace(*pos)) {
         *atom = pos[0];
         pos++;
+    }
+    else {
+        return 0;
     }
     *fin = pos;
     return 1;

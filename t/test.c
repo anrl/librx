@@ -32,37 +32,37 @@ int
 main () {
     rx_like   ("abcd", "", "empty regex always matches");
     rx_like   ("a", "a", "one character match");
-    rx_unlike ("a", "b", "one character no match");
+    rx_unlike ("a", "b", "fail one character");
     rx_like   ("frob", "frob", "multichar match");
-    rx_unlike ("frob", "nicate", "multichar no match");
+    rx_unlike ("frob", "nicate", "fail multichar");
     rx_like   ("abbbbc", "ab*c", "* quantifier");
-    rx_unlike ("abbbbxc", "ab*c", "* quantifier no match");
+    rx_unlike ("abbbbxc", "ab*c", "fail * quantifier");
     rx_like   ("abbbbc", "ab+c", "+ quantifier");
-    rx_unlike ("ac", "ab+c", "+ quantifier no match");
+    rx_unlike ("ac", "ab+c", "fail + quantifier");
     rx_like   ("abc", "ab?c", "? quantifier");
-    rx_unlike ("abbc", "ab?c", "? quantifier no match");
+    rx_unlike ("abbc", "ab?c", "fail ? quantifier");
     rx_like   ("abcd", ".", "any char");
-    rx_unlike ("", ".", "any char no match");
+    rx_unlike ("", ".", "fail any char");
     rx_like   ("abcd", "...", "multiple any chars");
-    rx_unlike ("abcd", ".....", "multiple any chars no match");
+    rx_unlike ("abcd", ".....", "fail multiple any chars");
     rx_like   ("they just stand back", "they.*just.*stand.*back", "dot star separated");
     rx_like   ("ab", "      a       b     ", "whitespace has no effect");
     rx_like   ("abbbbb", "(ab)*(ab*)*", "grouping");
-    rx_unlike ("abbbbb", "(ac)+", "grouping no match");
+    rx_unlike ("abbbbb", "(ac)+", "fail grouping");
     rx_like   ("elephant", "cat|dog|elephant|kangaroo", "ahhhh elephante!");
     rx_unlike ("elephant", "cat|dog|wolf|kangaroo", "elephante?");
     rx_like   ("hoothoothoot", "(hoot)<~~0>+", "subpattern");
-    rx_unlike ("hootasdf", "(hoot)<~~0>+", "subpattern no match");
+    rx_unlike ("hootasdf", "(hoot)<~~0>+", "fail subpattern");
     rx_like   ("ExxExxx3E33", "(E(x)*<~~0>*3)", "recursive subpattern");
     rx_like   ("file.txt", "file\\.txt", "escape");
-    rx_unlike ("file~txt", "file\\.txt", "escape no match");
+    rx_unlike ("file~txt", "file\\.txt", "fail escape");
     rx_like   ("kupo! kupo!", "kupo\\!\\ kupo\\!", "escape bangs and spaces");
     rx_like   ("Do you\nremember me?", "Do \\  you \\n remember \\  me \\?", "escape newline");
     rx_like   ("Wark!", "\\N\\T\\N+", "negated character");
-    rx_unlike ("Kw\neh!", "\\N\\T\\N+", "negated character no match");
+    rx_unlike ("Kw\neh!", "\\N\\T\\N+", "fail negated character");
     rx_like   ("The world is veiled in darkness.", "'The world is'", "single quotes");
     rx_like   ("***Weezy blog***", "'***Weezy blog***'", "yet another single quotes");
-    rx_unlike ("nothing like it", "'like this'", "single quotes no match");
+    rx_unlike ("nothing like it", "'like this'", "fail single quotes");
     rx_like   ("The <wind> stops", "....\"<wind>\"", "double quotes");
     rx_like   ("foobar", "  \
         foo                 \
@@ -80,14 +80,21 @@ main () {
     rx_unlike ("aabb", "a<~~0>", "match error: capture 0 doesn't exist");
     endskip;
     rx_like   ("R", "<[A..Z]>", "char class");
-    rx_unlike ("r", "<[A..Z]>", "char class no match");
+    rx_unlike ("r", "<[A..Z]>", "fail char class");
     rx_like   ("overall the same", "<alpha>+<space>+<alpha>+", "named char classes");
-    rx_unlike ("overall the same", "<upper>+<space>+<upper>+", "named char classes no match");
+    rx_unlike ("overall the same", "<upper>+<space>+<upper>+", "fail named char classes");
     rx_like   ("couldn't see the future", "<[c..u]>*<[\\']>", "backslash in char class");
     rx_like   ("Thats-a-right I'm Don", "<alpha + [-]>+ ' ' I\\'m", "char class combo");
-    rx_unlike ("Thats-a-right I'm Don", "<alpha + [_]>+ ' ' I\\'m", "char class combo no match");
+    rx_unlike ("Thats-a-right I'm Don", "<alpha + [_]>+ ' ' I\\'m", "fail char class combo");
     rx_like   (":;:", "<[:;]><[:;]><[:;]>", "cc doesnt needs many escapes");
     rx_like   ("[nightmares]", "'[' <-[\\]]>* ']'", "match brackets with char class");
+    rx_like   ("abcabcabcabcd", "'abc'**4", "fixed exact repetition");
+    rx_like   ("abcabcabcabcd", "'abc'   **    4", "fixed exact repetition with space");
+    rx_unlike ("abcabcabcabcd", "'abc' ** 5", "fail fixed exact repetition");
+    rx_like   ("abcabcabcabcd", "'abc' ** 2..4", "fixed range repetition");
+    rx_unlike ("abc", "'abc'**2..4", "fail fixed range repetition");
+    rx_like   ("abcabcabcabcd", "'abc' ** 2..*", "open range repetition");
+    rx_unlike ("abcd", "'abc' ** 2..*", "fail open range repetition");
     return exit_status();
 }
 

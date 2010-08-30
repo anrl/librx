@@ -54,5 +54,12 @@ All possible matches will be found regarding greedy and non greedy.
 Grouping will cause the creation of a new regex and the nfa will only reference
 it. That way thay can be reused either by number or name later in the regex. 
 This allows for matching things like balanced parentheses.
+
+Im not sure what to do about empty atoms '', "", <?> etc. If quantified (''*)
+they will cause an infinite loop which the matcher currently cant get out of.
+Perhaps if I keep track of the min number of characters a group or atom can
+match and ignore quantifiers if 0. Same issue with (a*)*. I believe Perl keeps
+track of what min length each thing can match to figure its way out of this
+case.
 */
 
