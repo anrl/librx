@@ -430,43 +430,38 @@ disjunction (Parser *p, const char *pos, const char **fin) {
     /* disjuntion: '|'? <conjunction> ('|' <conjunction>)*  */
     State *start = p->rx->end;
     State *end = state_new(p->rx);
-    while (isspace(*pos))
-        pos++;
+    ws(pos, &pos);
     if (*pos == '|')
         pos++;
     while (1) {
-        conjunction(p, pos, fin);
+        conjunction(p, pos, &pos);
         if (p->error)
             return -1;
-        pos = *fin;
         transition_new(p->rx->end, end);
         p->rx->end = start;
-        while (isspace(*pos))
-            pos++;
+        ws(pos, &pos);
         if (*pos == '|')
             pos++;
         else
             break;
     }
     p->rx->end = end;
+    *fin = pos;
     return 1;
 }
 
 Rx *
 rx_new (const char *rx_str) {
     const char *pos = rx_str;
-    const char *fin = NULL;
     Rx *rx;
     Parser *p = calloc(1, sizeof (Parser));
     p->top = p->rx = calloc(1, sizeof (Rx));
     p->rx->end = p->rx->start = state_new(p->rx);
     if (rx_debug)
         printf("/%s/\n", rx_str);
-    disjunction(p, pos, &fin);
+    disjunction(p, pos, &pos);
     if (!p->error) {
-        pos = fin;
-        while (isspace(*pos))
-            pos++;
+        ws(pos, &pos);
         if (*pos)
             p->error = strdupf("invalid regex syntax '%s'", pos);
     }
