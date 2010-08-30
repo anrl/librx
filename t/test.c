@@ -95,6 +95,18 @@ main () {
     rx_unlike ("abc", "'abc'**2..4", "fail fixed range repetition");
     rx_like   ("abcabcabcabcd", "'abc' ** 2..*", "open range repetition");
     rx_unlike ("abcd", "'abc' ** 2..*", "fail open range repetition");
+    rx_like   ("ab  cdef", "ab\\s+cdef", "whitespace");
+    rx_unlike ("abcdef", "ab\\s+cdef", "fail whitespace");
+    rx_like   ("abcdef", "a\\S+f", "non whitespace");
+    rx_unlike ("ab  cdef", "ab\\S+cdef", "fail non whitespace");
+    rx_like   ("abcdef", "a\\w+f", "word character");
+    rx_unlike ("a=[ *f", "a\\w+f", "fail word character");
+    rx_like   ("a&%;' f", "a\\W+f", "non word character");
+    rx_unlike ("abcdef", "a\\W+f", "fail non word character");
+    rx_like   ("ab42cdef", "ab\\d+cdef", "digit");
+    rx_unlike ("abcdef", "a\\d+f", "fail digit");
+    rx_like   ("abcdef", "a\\D+f", "non digit");
+    rx_unlike   ("ab0cdef", "a\\D+f", "fail non digit");
     return exit_status();
 }
 

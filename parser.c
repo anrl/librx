@@ -52,7 +52,6 @@ captureref (Parser *p, const char *pos, const char **fin) {
     return 1;
 }
 
-/* TODO all white space should use this rule and make it handle comments  */
 int
 ws (const char *pos, const char **fin) {
     /* ws: \s*  */
@@ -232,9 +231,10 @@ group (Parser *p, const char *pos, const char **fin) {
 
 static int
 escape (Parser *p, const char *pos, const char **fin) {
-    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtT]>  */
-    Transition *t;
+    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtTsSwW]>  */
     char c;
+    Transition *t;
+    int charclass = 0;
     if (*pos++ != '\\')
         return 0;
     if (!(isalnum(*pos) || *pos == '_' || *pos == '-'))
@@ -245,11 +245,31 @@ escape (Parser *p, const char *pos, const char **fin) {
         c = '\r';
     else if (tolower(*pos) == 't')
         c = '\t';
+    else if (tolower(*pos) == 's')
+        charclass = 1;
+    else if (tolower(*pos) == 'w')
+        charclass = 1;
+    else if (tolower(*pos) == 'd')
+        charclass = 1;
     else
         return 0;
     t = transition_new(p->rx->end, state_new(p->rx));
-    t->type = isupper(*pos) ? NEGCHAR : CHAR;
-    t->c = c;
+    if (charclass) {
+        CharClass *cc = calloc(1, sizeof (CharClass));
+        cc->not = isupper(*pos);
+        if (tolower(*pos) == 's')
+            cc->isfunc = isspace;
+        else if (tolower(*pos) == 'w')
+            cc->set = strdup("a..zA..Z0..9_-");
+        else if (tolower(*pos) == 'd')
+            cc->isfunc = isdigit;
+        t->ccc = list_push(t->ccc, cc);
+        t->type = CHARCLASS;
+    }
+    else {
+        t->c = c;
+        t->type = isupper(*pos) ? NEGCHAR : CHAR;
+    }
     p->rx->end = t->to;
     *fin = ++pos;
     return 1;
