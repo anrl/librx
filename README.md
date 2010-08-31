@@ -17,8 +17,6 @@ SYNOPSIS
         rx_free(rx);
     }
 
-prints "'chapter-55' matches!"
-
 DESCRIPTION
 ===========
 
