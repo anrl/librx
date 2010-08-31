@@ -30,6 +30,9 @@ rx_like_at_loc (int for_match, const char *file, int line, const char *got,
 
 int
 main () {
+    rx_like   ("chapter-55, page-44, line-33",
+               "([chapter|page|line] - <digit>+) [',' \\s* <~~0>] ** 1..2",
+               "synopsis");
     rx_like   ("abcd", "", "empty regex always matches");
     rx_like   ("a", "a", "one character match");
     rx_unlike ("a", "b", "fail one character");
@@ -133,6 +136,7 @@ main () {
     rx_like   ("abc\ndef\n-==\nghi", "ghi \\b", "eos word boundary");
     rx_unlike ("abc\ndef\n-==\nghi", "a \\b", "fail \\w\\w word boundary");
     rx_unlike ("abc\ndef\n-==\nghi", "\\= \\b", "fail \\W\\W word boundary");
+    rx_like   ("abcdef", "ab\\Bc", "non word boundary");
     return exit_status();
 }
 

@@ -9,9 +9,11 @@ SYNOPSIS
     #include <rx.h>
     
     int main {
-        Rx *rx = rx_new("((title|chapter|page|line|column)-)? (0|1|2|3|4|5)+");
-        if (rx_match(rx, "chapter-55"))
-            printf("'chapter-55' matches!\n");
+        Rx *rx = rx_new(
+            "([chapter|page|line] - <digit>+) [',' \\s* <~~0>] ** 1..2"
+        );
+        if (rx_match(rx, "chapter-55, page-44, line-33"))
+            printf("it matches!\n");
         rx_free(rx);
     }
 
@@ -59,8 +61,9 @@ SYNTAX
 
 Many regex features that one may expect are supported.
 
-An alphanumeric character, '_', or '-' will match itself. All other characters
-need to be escaped with a backslash.
+An alphanumeric character, ``_``, or ``-`` will match itself. All other
+characters need to be escaped with a backslash or enclosed in quotes or
+character classes.
 
 Note that in C, double quoted strings interpolate escapes, so you have to
 escape all backslashes before sending them to rx_new().
@@ -84,7 +87,7 @@ Each atom may have a quantifier after it.
 -   ``** n..*`` matches n or more times
 
 You may group a portion of the regex in parentheses ``(`` which may be used as
-any other atom and referenced later either with <~~#> or through the Match
+any other atom and referenced later either with ``<~~#>`` or through the Match
 object. There is also the ability to group without capturing with square
 brackets ``[``.
 
@@ -95,27 +98,28 @@ You can refer to the pattern in previous groups by referencing them as a number
 in the extensible meta syntax. ``/(cool)<~~0>/``. These can even refer to its
 own group recursively. You can refer to the whole pattern by using ``<~~>``.
 
-The '.' character really matches any character. If you want everything but a
-newline, use \N. Also, there are escapes \T and \R for anything but \t and \r.
+The ``.`` character really matches any character. If you want everything but a
+newline, use ``\N``. Also, there are escapes ``\T`` and ``\R`` for anything but
+``\t`` and ``\r``.
 
 Escaped character classes ``\w`` matches a word char, ``\s`` matches a space
 char, and ``\d`` matches a digit. The may be negated with ``\W``, ``\S``, and
 ``\D`` which will match anything but what their lower case version would match.
 
-A character class is specified with <[...]>. For example, ``<[a..z_]>``,
-specifies any character from a to z or _. Whitespace is ignored in this
-construct. and you can combine character classes by adding and subtracting
-them. <[a..z] + ['] - [m..q]>. Negated character classes start with a -, so
-<-[aeiou]> matches anything but a vowel.
+A character class is specified with ``<[...]>``. For example, ``<[a..z_]>``,
+specifies any character from ``a`` to ``z`` or ``_``. Whitespace is ignored in
+this construct, and you can combine character classes by adding and subtracting
+them like this ``<[a..z] + ['] - [m..q]>``. Negated character classes start
+with a ``-``, so ``<-[aeiou]>`` matches anything but a vowel.
 
 The following named character classes are allowed as well: upper, lower, alpha,
 digit, xdigit, print, graph, cntrl, punct, alnum, space, blank, and word. They
-may be combined with + and - just as the bracketed char classes can.
+may be combined with ``+`` and ``-`` just as the bracketed char classes can.
 ``<[_] + alpha + punct>`` or used on their own like ``<print>``.
 
 Assertions ``^`` matches the beginning of the string, ``^^`` matches the
 beginning of a line, ``$`` matches the end of the string, ``$$`` matches the
 end of a line, ``<<`` matches a left word boundary, ``>>`` matches a right word
-boundary, and ``\b`` matches a word boundary regardless of being on the left or
-right side.
+boundary, ``\b`` matches a word boundary regardless of being on the left or
+right side, and ``\B`` matches a non-word boundary.
 

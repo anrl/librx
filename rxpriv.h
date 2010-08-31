@@ -69,6 +69,7 @@ int eol (const char *str, const char *pos);
 int lwb (const char *str, const char *pos);
 int rwb (const char *str, const char *pos);
 int wb  (const char *str, const char *pos);
+int nwb (const char *str, const char *pos);
 
 /* parser  */
 struct Rx {

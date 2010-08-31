@@ -63,6 +63,11 @@ wb (const char *str, const char *pos) {
     return lwb(str, pos) || rwb(str, pos);
 }
 
+int
+nwb (const char *str, const char *pos) {
+    return !wb(str, pos);
+}
+
 static void
 path_unref (Path *path) {
     if (!path)

@@ -436,6 +436,10 @@ assertion (Parser *p, const char *pos, const char **fin) {
         p->rx->end->assertfunc = wb;
         pos += 2;
     }
+    else if (pos[0] == '\\' && pos[1] == 'B') {
+        p->rx->end->assertfunc = nwb;
+        pos += 2;
+    }
     else
         return 0;
     *fin = pos;
