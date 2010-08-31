@@ -19,12 +19,48 @@ typedef struct {
     List *paths;
     List *next_paths;
     List *matches;
+    const char *str;
     char *error;
 } Matcher;
 
 int
 isword (int c) {
     return isalnum(c) || c == '_' || c == '-';
+}
+
+int
+bos (const char *str, const char *pos) {
+    return pos == str;
+}
+
+int
+bol (const char *str, const char *pos) {
+    return bos(str, pos) || pos[-1] == '\n';
+}
+
+int
+eos (const char *str, const char *pos) {
+    return !*pos;
+}
+
+int
+eol (const char *str, const char *pos) {
+    return eos(str, pos) || *pos == '\n';
+}
+
+int
+lwb (const char *str, const char *pos) {
+    return (bos(str, pos) || !isword(pos[-1])) && isword(*pos);
+}
+
+int
+rwb (const char *str, const char *pos) {
+    return !bos(str, pos) && isword(pos[-1]) && !isword(*pos);
+}
+
+int
+wb (const char *str, const char *pos) {
+    return lwb(str, pos) || rwb(str, pos);
 }
 
 static void
@@ -148,6 +184,12 @@ get_next_paths (Matcher *m, const char *pos, Path *path) {
     /* reference path for the duration of the function  */
     path->links++;
 
+    if (path->state->assertfunc) {
+        if (!path->state->assertfunc(m->str, pos)) {
+            path_unref(path);
+            return;
+        }
+    }
     if (!path->state->transitions) {
         if (path->backs) {
             /* leave group  */
@@ -237,40 +279,51 @@ int
 rx_match (Rx *rx, const char *str) {
     int retval;
     int i = 0;
-    const char *pos = str;
-    Matcher *m = calloc(1, sizeof (Matcher));
-    Path *p = calloc(1, sizeof (Path));
-    p->state = rx->start;
-    p->pos = str;
-    m->paths = list_push(m->paths, p);
-    m->rx = rx;
+    Matcher *m;
+    const char *startpos = str;
     if (rx_debug)
         printf("matching against '%s'\n", str);
     while (1) {
-        List *elem;
-        for (elem = m->paths; elem; elem = elem->next) {
-            Path *path = elem->data;
-            get_next_paths(m, pos, path);
-            if (m->error) {
-                fprintf(stderr, "%s\n", m->error);
-                matcher_free(m);
-                return 0;
+        const char *pos = startpos;
+        Path *p = calloc(1, sizeof (Path));
+        p->state = rx->start;
+        p->pos = pos;
+        m = calloc(1, sizeof (Matcher));
+        m->paths = list_push(m->paths, p);
+        m->str = str;
+        m->rx = rx;
+        while (1) {
+            List *elem;
+            for (elem = m->paths; elem; elem = elem->next) {
+                Path *path = elem->data;
+                get_next_paths(m, pos, path);
+                if (m->error) {
+                    fprintf(stderr, "%s\n", m->error);
+                    matcher_free(m);
+                    return 0;
+                }
             }
+            list_free(m->paths, NULL);
+            m->paths = m->next_paths;
+            m->next_paths = NULL;
+            if (rx_debug)
+                paths_print(m, ++i, str);
+            if (!m->paths)
+                break;
+            if (!*pos++)
+                break;
         }
-        list_free(m->paths, NULL);
-        m->paths = m->next_paths;
-        m->next_paths = NULL;
-        if (rx_debug)
-            paths_print(m, ++i, str);
-        if (!m->paths)
+        retval = m->matches ? 1 : 0;
+        matcher_free(m);
+        if (pos == str && rx->start->assertfunc == bos)
             break;
-        if (!*pos++)
+        if (retval)
+            break;
+        if (!*startpos++)
             break;
     }
-    retval = m->matches ? 1 : 0;
     if (rx_debug)
         printf(retval ? "It matched\n" : "No match\n");
-    matcher_free(m);
     return retval;
 }
 

@@ -59,7 +59,7 @@ main () {
     rx_like   ("kupo! kupo!", "kupo\\!\\ kupo\\!", "escape bangs and spaces");
     rx_like   ("Do you\nremember me?", "Do \\  you \\n remember \\  me \\?", "escape newline");
     rx_like   ("Wark!", "\\N\\T\\N+", "negated character");
-    rx_unlike ("Kw\neh!", "\\N\\T\\N+", "fail negated character");
+    rx_unlike ("Kw\neh!", "^\\N\\T\\N+", "fail negated character");
     rx_like   ("The world is veiled in darkness.", "'The world is'", "single quotes");
     rx_like   ("***Weezy blog***", "'***Weezy blog***'", "yet another single quotes");
     rx_unlike ("nothing like it", "'like this'", "fail single quotes");
@@ -85,7 +85,7 @@ main () {
     rx_unlike ("overall the same", "<upper>+<space>+<upper>+", "fail named char classes");
     rx_like   ("couldn't see the future", "<[c..u]>*<[\\']>", "backslash in char class");
     rx_like   ("Thats-a-right I'm Don", "<alpha + [-]>+ ' ' I\\'m", "char class combo");
-    rx_unlike ("Thats-a-right I'm Don", "<alpha + [_]>+ ' ' I\\'m", "fail char class combo");
+    rx_unlike ("Thats-a-right I'm Don", "^ <alpha + [_]>+ ' ' I\\'m", "fail char class combo");
     rx_like   (":;:", "<[:;]><[:;]><[:;]>", "cc doesnt needs many escapes");
     rx_like   ("[nightmares]", "'[' <-[\\]]>* ']'", "match brackets with char class");
     rx_like   ("abcabcabcabcd", "'abc'**4", "fixed exact repetition");
@@ -106,7 +106,33 @@ main () {
     rx_like   ("ab42cdef", "ab\\d+cdef", "digit");
     rx_unlike ("abcdef", "a\\d+f", "fail digit");
     rx_like   ("abcdef", "a\\D+f", "non digit");
-    rx_unlike   ("ab0cdef", "a\\D+f", "fail non digit");
+    rx_unlike ("ab0cdef", "a\\D+f", "fail non digit");
+    rx_like   ("abcdef", "^ abc", "bos");
+    rx_unlike ("abcdef", "^ def", "fail bos");
+    rx_unlike ("def\nabc", "^ abc", "bos not bol");
+    rx_unlike ("def\nabc", "def \\n ^ abc", "yet another bos not bol");
+    rx_like   ("abcdef", "def $", "eos");
+    rx_unlike ("def\nabc", "def $", "fail eos");
+    rx_like   ("abc\ndef", "^^ abc \\n ^^ def", "bol");
+    rx_like   ("\n", "^^ \\n", "bol just newline");
+    rx_like   ("abc\ndef", "abc $$ \\n def $$", "eol");
+    rx_like   ("\n", "$$ \\n", "eol just newline");
+    rx_like   ("abc def", "<<def", "left word boundary");
+    rx_like   ("abc def", "<<abc", "left word boundary bos");
+    rx_unlike ("abc def", "<<bc", "fail left word boundary");
+    rx_unlike ("abc def", "c<<", "fail left word boundary");
+    rx_unlike (":::::::", "<<", "fail left word boundary no word chars");
+    rx_like   ("abc def", "c>>", "right word boundary");
+    rx_like   ("abc def", "def>>", "right word boundary");
+    rx_unlike ("abc def", ">>abc", "fail right word boundary");
+    rx_unlike ("abc def", ">>bc", "fail right word boundary mid-word");
+    rx_unlike (":::::::", ">>", "fail right word boundary no word chars");
+    rx_like   ("abc\ndef\n-==\nghi", "\\b def", "word boundary \\W\\w");
+    rx_like   ("abc\ndef\n-==\nghi", "abc \\b", "word boundary \\w\\W");
+    rx_like   ("abc\ndef\n-==\nghi", "\\b abc", "bos word boundary");
+    rx_like   ("abc\ndef\n-==\nghi", "ghi \\b", "eos word boundary");
+    rx_unlike ("abc\ndef\n-==\nghi", "a \\b", "fail \\w\\w word boundary");
+    rx_unlike ("abc\ndef\n-==\nghi", "\\= \\b", "fail \\W\\W word boundary");
     return exit_status();
 }
 

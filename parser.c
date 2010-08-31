@@ -406,12 +406,54 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start,
 }
 
 static int
+assertion (Parser *p, const char *pos, const char **fin) {
+    /* assertion: '^' | '^^' | '$' | '$$' | '<<' | '>>' | '\b'  */
+    if (pos[0] == '^' && pos[1] == '^') {
+        p->rx->end->assertfunc = bol;
+        pos += 2;
+    }
+    else if (pos[0] == '^') {
+        p->rx->end->assertfunc = bos;
+        pos++;
+    }
+    else if (pos[0] == '$' && pos[1] == '$') {
+        p->rx->end->assertfunc = eol;
+        pos += 2;
+    }
+    else if (pos[0] == '$') {
+        p->rx->end->assertfunc = eos;
+        pos++;
+    }
+    else if (pos[0] == '<' && pos[1] == '<') {
+        p->rx->end->assertfunc = lwb;
+        pos += 2;
+    }
+    else if (pos[0] == '>' && pos[1] == '>') {
+        p->rx->end->assertfunc = rwb;
+        pos += 2;
+    }
+    else if (pos[0] == '\\' && pos[1] == 'b') {
+        p->rx->end->assertfunc = wb;
+        pos += 2;
+    }
+    else
+        return 0;
+    *fin = pos;
+    return 1;
+}
+
+static int
 atom (Parser *p, const char *pos, const char **fin) {
-    /* atom: (<character> | <escape> | <group> | <metasyntax> | <quote>)
-             <quantifier>  */
+    /* atom: <assertion> | (<character> | <escape> | <group> | <metasyntax> |
+             <quote>) <quantifier>  */
     State *start = p->rx->end;
-    State *astart = p->rx->end = state_new(p->rx);
+    State *astart;
     ws(pos, &pos);
+    if (assertion(p, pos, &pos)) {
+        *fin = pos;
+        return 1;
+    }
+    astart = p->rx->end = state_new(p->rx);
     if      (character  (p, pos, &pos)) ;
     else if (escape     (p, pos, &pos)) ;
     else if (group      (p, pos, &pos)) ;

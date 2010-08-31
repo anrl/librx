@@ -30,6 +30,7 @@ List *list_remove    (List *list, void *data, int (*cmpfunc) (),
 typedef struct {
     List *transitions;
     Rx *group;
+    int (*assertfunc) (const char *str, const char *pos);
 } State;
 
 typedef enum {
@@ -55,12 +56,19 @@ typedef struct {
     List *ccc; /* char class combo  */
 } Transition;
 
-State *state_new (Rx *rx);
-void state_free (State *state);
+State      *state_new      (Rx *rx);
+void        state_free     (State *state);
 Transition *transition_new (State *from, State *to);
 
 /* matcher  */
 int isword (int c);
+int bos (const char *str, const char *pos);
+int bol (const char *str, const char *pos);
+int eos (const char *str, const char *pos);
+int eol (const char *str, const char *pos);
+int lwb (const char *str, const char *pos);
+int rwb (const char *str, const char *pos);
+int wb  (const char *str, const char *pos);
 
 /* parser  */
 struct Rx {
