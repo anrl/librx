@@ -63,7 +63,7 @@ ws (const char *pos, const char **fin) {
 
 static int
 namedcharclass (Parser *p, const char **pos, const char *name,
-                int (*isfunc) (), const char *set)
+                int (*isfunc)())
 {
     int len = strlen(name);
     if (strncmp(*pos, name, len))
@@ -71,7 +71,6 @@ namedcharclass (Parser *p, const char **pos, const char *name,
     *pos += len;
     p->cc = calloc(1, sizeof (CharClass));
     p->cc->isfunc = isfunc;
-    p->cc->set = set ? strdup(set) : NULL;
     return 1;
 }
 
@@ -98,19 +97,19 @@ charclass (Parser *p, const char *pos, const char **fin) {
         p->cc->set = strdupf("%.*s", pos - start, start);
         pos++;
     }
-    else if (namedcharclass(p, &pos, "upper",  isupper,  NULL)) ;
-    else if (namedcharclass(p, &pos, "lower",  islower,  NULL)) ;
-    else if (namedcharclass(p, &pos, "alpha",  isalpha,  NULL)) ;
-    else if (namedcharclass(p, &pos, "digit",  isdigit,  NULL)) ;
-    else if (namedcharclass(p, &pos, "xdigit", isxdigit, NULL)) ;
-    else if (namedcharclass(p, &pos, "print",  isprint,  NULL)) ;
-    else if (namedcharclass(p, &pos, "graph",  isgraph,  NULL)) ;
-    else if (namedcharclass(p, &pos, "cntrl",  iscntrl,  NULL)) ;
-    else if (namedcharclass(p, &pos, "punct",  ispunct,  NULL)) ;
-    else if (namedcharclass(p, &pos, "alnum",  isalnum,  NULL)) ;
-    else if (namedcharclass(p, &pos, "space",  isspace,  NULL)) ;
-    else if (namedcharclass(p, &pos, "blank",  isblank,  NULL)) ;
-    else if (namedcharclass(p, &pos, "word",   NULL,     "a..zA..Z0..9_-")) ;
+    else if (namedcharclass(p, &pos, "xdigit", isxdigit)) ;
+    else if (namedcharclass(p, &pos, "upper",  isupper))  ;
+    else if (namedcharclass(p, &pos, "lower",  islower))  ;
+    else if (namedcharclass(p, &pos, "alpha",  isalpha))  ;
+    else if (namedcharclass(p, &pos, "digit",  isdigit))  ;
+    else if (namedcharclass(p, &pos, "print",  isprint))  ;
+    else if (namedcharclass(p, &pos, "graph",  isgraph))  ;
+    else if (namedcharclass(p, &pos, "cntrl",  iscntrl))  ;
+    else if (namedcharclass(p, &pos, "punct",  ispunct))  ;
+    else if (namedcharclass(p, &pos, "alnum",  isalnum))  ;
+    else if (namedcharclass(p, &pos, "space",  isspace))  ;
+    else if (namedcharclass(p, &pos, "blank",  isblank))  ;
+    else if (namedcharclass(p, &pos, "word",   isword))   ;
     else
         return 0;
     *fin = pos;
@@ -231,7 +230,7 @@ group (Parser *p, const char *pos, const char **fin) {
 
 static int
 escape (Parser *p, const char *pos, const char **fin) {
-    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtTsSwW]>  */
+    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtTsSwWdD]>  */
     char c;
     Transition *t;
     int charclass = 0;
@@ -260,7 +259,7 @@ escape (Parser *p, const char *pos, const char **fin) {
         if (tolower(*pos) == 's')
             cc->isfunc = isspace;
         else if (tolower(*pos) == 'w')
-            cc->set = strdup("a..zA..Z0..9_-");
+            cc->isfunc = isword;
         else if (tolower(*pos) == 'd')
             cc->isfunc = isdigit;
         t->ccc = list_push(t->ccc, cc);

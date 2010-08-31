@@ -59,6 +59,9 @@ State *state_new (Rx *rx);
 void state_free (State *state);
 Transition *transition_new (State *from, State *to);
 
+/* matcher  */
+int isword (int c);
+
 /* parser  */
 struct Rx {
     List *extends;

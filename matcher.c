@@ -22,6 +22,11 @@ typedef struct {
     char *error;
 } Matcher;
 
+int
+isword (int c) {
+    return isalnum(c) || c == '_' || c == '-';
+}
+
 static void
 path_unref (Path *path) {
     if (!path)
