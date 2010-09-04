@@ -52,7 +52,7 @@ list_nth_data (List *list, int n) {
 }
 
 List *
-list_pop (List *list) {
+list_pop (List *list, void *dump) {
     List *last, *prev;
     if (!list)
         return NULL;
@@ -60,6 +60,8 @@ list_pop (List *list) {
         ;
     if (prev)
         prev->next = NULL;
+    if (dump)
+        * (void **) dump = last->data;
     free(last);
     if (last == list)
         return NULL;

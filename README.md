@@ -101,7 +101,7 @@ newline, use ``\N``. Also, there are escapes ``\T`` and ``\R`` for anything but
 ``\t`` and ``\r``.
 
 Escaped character classes ``\w`` matches a word char, ``\s`` matches a space
-char, and ``\d`` matches a digit. The may be negated with ``\W``, ``\S``, and
+char, and ``\d`` matches a digit. They may be negated with ``\W``, ``\S``, and
 ``\D`` which will match anything but what their lower case version would match.
 
 A character class is specified with ``<[...]>``. For example, ``<[a..z_]>``,

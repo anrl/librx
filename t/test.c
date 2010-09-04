@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <tap.h>
 #include "../rxpriv.h"
 
@@ -26,6 +27,13 @@ rx_like_at_loc (int for_match, const char *file, int line, const char *got,
             for_match ? "doesn't match" : "matches", expected);
     }
     return test;
+}
+
+int *
+int_new (int x) {
+    int *i = malloc(sizeof (int));
+    *i = x;
+    return i;
 }
 
 int

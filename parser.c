@@ -41,7 +41,7 @@ captureref (Parser *p, const char *pos, const char **fin) {
             p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
-        t->type = CLUSTER;
+        t->type = CAPTURE;
         t->c = capture;
         pos = *fin;
     }
@@ -407,7 +407,7 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start,
 
 static int
 assertion (Parser *p, const char *pos, const char **fin) {
-    /* assertion: '^' | '^^' | '$' | '$$' | '<<' | '>>' | '\b'  */
+    /* assertion: '^' | '^^' | '$' | '$$' | '<<' | '>>' | '\b' | '\B'  */
     if (pos[0] == '^' && pos[1] == '^') {
         p->rx->end->assertfunc = bol;
         pos += 2;

@@ -18,13 +18,27 @@ List *list_push      (List *list, void *data);
 void *list_last_data (List *list);
 void *list_nth_data  (List *list, int n);
 int   list_elems     (List *list);
-List *list_pop       (List *list);
+List *list_pop       (List *list, void *dump);
 List *list_copy      (List *list);
 List *list_cat       (List *a, List *b);
 void  list_free      (List *list, void (*freefunc) ());
 List *list_find      (List *list, void *data, int (*cmpfunc) ());
 List *list_remove    (List *list, void *data, int (*cmpfunc) (),
                       void (*freefunc) ());
+
+/* tree  */
+typedef struct Node Node;
+
+struct Node {
+    void *data;
+    Node *parent;
+    List *children;
+    int   refs;
+};
+
+Node *node_new         (Node *parent, void *data);
+void  node_free        (Node *leaf, void (*freefunc) ());
+void  node_free_branch (Node *leaf, void (*freefunc) ());
 
 /* state  */
 typedef struct {
@@ -38,7 +52,7 @@ typedef enum {
     ANYCHAR,  /* eats any char (.)  */
     CHAR,     /* eats one char  */
     NEGCHAR,  /* eats anything but a char  */
-    CLUSTER,  /* goes to a cluster  */
+    CAPTURE,  /* goes to a capture  */
     CHARCLASS /* eats a char in a char class  */
 } TransitionType;
 
@@ -62,25 +76,25 @@ Transition *transition_new (State *from, State *to);
 
 /* matcher  */
 int isword (int c);
-int bos (const char *str, const char *pos);
-int bol (const char *str, const char *pos);
-int eos (const char *str, const char *pos);
-int eol (const char *str, const char *pos);
-int lwb (const char *str, const char *pos);
-int rwb (const char *str, const char *pos);
-int wb  (const char *str, const char *pos);
-int nwb (const char *str, const char *pos);
+int bos    (const char *str, const char *pos);
+int bol    (const char *str, const char *pos);
+int eos    (const char *str, const char *pos);
+int eol    (const char *str, const char *pos);
+int lwb    (const char *str, const char *pos);
+int rwb    (const char *str, const char *pos);
+int wb     (const char *str, const char *pos);
+int nwb    (const char *str, const char *pos);
 
 /* parser  */
 struct Rx {
-    List *extends;
-    char *name;
+    List  *extends;
+    char  *name;
     State *start;
     State *end;
-    List *states;
-    List *captures;
-    List *clusters;
-    List *subrules;
+    List  *states;
+    List  *captures;
+    List  *clusters;
+    List  *subrules;
 };
 
 int ws (const char *pos, const char **fin);
