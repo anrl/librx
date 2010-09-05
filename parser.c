@@ -63,7 +63,7 @@ ws (const char *pos, const char **fin) {
 
 static int
 namedcharclass (Parser *p, const char **pos, const char *name,
-                int (*isfunc)())
+                int (*isfunc) ())
 {
     int len = strlen(name);
     if (strncmp(*pos, name, len))
@@ -131,7 +131,7 @@ charclasscombo (Parser *p, const char *pos, const char **fin) {
             return -1;
         pos = *fin;
         t = transition_new(p->rx->end, state_new(p->rx));
-        t->type = CHARCLASS;
+        t->type = EAT | CHARCLASS;
         p->cc->not = not;
         t->ccc = list_push(t->ccc, p->cc);
         p->rx->end = t->to;
@@ -263,11 +263,11 @@ escape (Parser *p, const char *pos, const char **fin) {
         else if (tolower(*pos) == 'd')
             cc->isfunc = isdigit;
         t->ccc = list_push(t->ccc, cc);
-        t->type = CHARCLASS;
+        t->type = EAT | CHARCLASS;
     }
     else {
         t->c = c;
-        t->type = isupper(*pos) ? NEGCHAR : CHAR;
+        t->type = isupper(*pos) ? EAT | NEGCHAR : EAT | CHAR;
     }
     p->rx->end = t->to;
     *fin = ++pos;
@@ -286,7 +286,7 @@ quote (Parser *p, const char *pos, const char **fin) {
         }
         else if (*pos && *pos != delimeter) {
             Transition *t = transition_new(p->rx->end, state_new(p->rx));
-            t->type = CHAR;
+            t->type = EAT | CHAR;
             t->c = *pos;
             p->rx->end = t->to;
             pos++;
@@ -309,7 +309,7 @@ character (Parser *p, const char *pos, const char **fin) {
     if (!(isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.'))
         return 0;
     t = transition_new(p->rx->end, state_new(p->rx));
-    t->type = *pos == '.' ? ANYCHAR : CHAR;
+    t->type = *pos == '.' ? EAT | ANYCHAR : EAT | CHAR;
     t->c = *pos;
     p->rx->end = t->to;
     *fin = ++pos;

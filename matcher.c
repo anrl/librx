@@ -208,11 +208,11 @@ advance_cursor (Matcher *m, Cursor *cursor) {
     for (elem = cursor->state->transitions; elem; elem = elem->next) {
         Transition *t = elem->data;
         Cursor *next;
-        if (t->type == CHAR && t->c != *m->pos)
+        if (t->type & CHAR && t->c != *m->pos)
             continue;
-        if (t->type == NEGCHAR && t->c == *m->pos)
+        if (t->type & NEGCHAR && t->c == *m->pos)
             continue;
-        if (t->type == CAPTURE && !t->to) {
+        if (t->type & CAPTURE && !t->to) {
             Rx *capture = list_nth_data(m->rx->captures, t->c);
             if (!capture) {
                 m->error = strdupf("capture %d not found", t->c);
@@ -220,21 +220,21 @@ advance_cursor (Matcher *m, Cursor *cursor) {
             }
             t->to = capture->start;
         }
-        if (t->type == CHARCLASS && !isinccc(m, t->ccc, *m->pos))
+        if (t->type & CHARCLASS && !isinccc(m, t->ccc, *m->pos))
             continue;
         if (m->error)
             return;
         next = cursor_new(cursor, m->pos, t->to, cursor->backs);
         if (t->back)
             next->backs = list_push(next->backs, t->back);
-        if (t->type == NOCHAR || t->type == CAPTURE) {
+        if (t->type & EAT) {
+            next->pos++;
+            m->cursors = list_push(m->cursors, next);
+        }
+        else {
             advance_cursor(m, next);
             if (m->error)
                 return;
-        }
-        else {
-            next->pos++;
-            m->cursors = list_push(m->cursors, next);
         }
     }
     cursor_free_branch(cursor);

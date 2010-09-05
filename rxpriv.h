@@ -33,12 +33,12 @@ typedef struct {
 } State;
 
 typedef enum {
-    NOCHAR,   /* gets you from one state to another but eats nothing  */
-    ANYCHAR,  /* eats any char (.)  */
-    CHAR,     /* eats one char  */
-    NEGCHAR,  /* eats anything but a char  */
-    CAPTURE,  /* goes to a capture  */
-    CHARCLASS /* eats a char in a char class  */
+    EAT       = 1 << 0,
+    CHAR      = 1 << 1,
+    ANYCHAR   = 1 << 2,
+    NEGCHAR   = 1 << 3,
+    CHARCLASS = 1 << 4,
+    CAPTURE   = 1 << 5
 } TransitionType;
 
 typedef struct {

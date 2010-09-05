@@ -35,7 +35,7 @@ rx_print (Rx *rx) {
             for (elem = state->transitions; elem; elem = elem->next) {
                 Transition *t = elem->data;
                 printf("    transition ");
-                if ((t->type == CHAR || t->type == ANYCHAR) && isgraph(t->c))
+                if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
                     printf("'%c' ", t->c);
                 printf("to %p\n", t->to);
                 if (t->back)
