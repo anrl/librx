@@ -241,24 +241,14 @@ advance_cursor (Matcher *m, Cursor *cursor) {
 }
 
 static void
-cursor_print (Cursor *cursor) {
-    if (!cursor)
-        return;
-    cursor_print(cursor->parent);
-    printf("%p %d -> ", cursor, cursor->refs);
-}
-
-static void
 matcher_print (Matcher *m) {
     List *elem;
     for (elem = m->cursors; elem; elem = elem->next) {
         Cursor *cursor = elem->data;
-        cursor_print(cursor);
         printf("cursor '%.*s'\n", cursor->pos - m->startpos, m->startpos);
     }
     for (elem = m->matches; elem; elem = elem->next) {
         Cursor *match = elem->data;
-        cursor_print(match);
         printf("match '%.*s'\n", match->pos - m->startpos, m->startpos);
     }
 }
