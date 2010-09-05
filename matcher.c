@@ -4,46 +4,46 @@
 #include <string.h>
 #include "rxpriv.h"
 
-/* A path points to a place in the regex and the string keeping track of any
-return addresses it needs when entering groups  */
-typedef struct {
-    const char *pos;
-    State      *state;
-    List       *backs;
-} Path;
-
-static Path *
-path_new (const char *pos, State *state, List *backs) {
-    Path *path = malloc(sizeof (Path));
-    path->pos = pos;
-    path->state = state;
-    path->backs = list_copy(backs);
-    return path;
-}
-
-static void
-path_free (Path *path) {
-    if (!path)
-        return;
-    list_free(path->backs, NULL);
-    free(path);
-}
-
-static void
-path_node_free_branch (Node *leaf) {
-    node_free_branch(leaf, path_free);
-}
-
 /* A matcher keeps track of the current state of the match  */
 typedef struct {
     Rx *rx;
-    List *paths;
-    List *next_paths;
+    List *cursors;
     List *matches;
     const char *str;
     const char *startpos;
+    const char *pos;
     char *error;
 } Matcher;
+
+static Matcher *
+matcher_new (Rx *rx, const char *str) {
+    Matcher *m = calloc(1, sizeof (Matcher));
+    m->rx = rx;
+    m->str = m->startpos = m->pos = str;
+    return m;
+}
+
+static void
+matcher_prep (Matcher *m) {
+    Cursor *root;
+    if (!m)
+        return;
+    m->cursors = list_free(m->cursors, cursor_free_branch);
+    m->matches = list_free(m->matches, cursor_free_branch);
+    m->pos = m->startpos;
+    root = cursor_new(NULL, m->pos, m->rx->start, NULL);
+    m->cursors = list_push(m->cursors, root);
+}
+
+static void
+matcher_free (Matcher *m) {
+    if (!m)
+        return;
+    list_free(m->cursors, cursor_free_branch);
+    list_free(m->matches, cursor_free_branch);
+    free(m->error);
+    free(m);
+}
 
 int
 isword (int c) {
@@ -88,17 +88,6 @@ wb (const char *str, const char *pos) {
 int
 nwb (const char *str, const char *pos) {
     return !wb(str, pos);
-}
-
-static void
-matcher_free (Matcher *m) {
-    if (!m)
-        return;
-    list_free(m->next_paths, path_node_free_branch);
-    list_free(m->paths, path_node_free_branch);
-    list_free(m->matches, path_node_free_branch);
-    free(m->error);
-    free(m);
 }
 
 static int
@@ -173,64 +162,55 @@ isincc (Matcher *m, const char *set, char c) {
 /* Match a character class combo such as <punct + alpha - [a..f] - [,]>  */
 static int
 isinccc (Matcher *m, List *ccc, char c) {
-    int match;
+    int retval;
     CharClass *cc;
     List *elem;
     if (!ccc)
         return 0;
     cc = ccc->data;
-    match = cc->not;
+    retval = cc->not;
     for (elem = ccc; elem; elem = elem->next) {
         cc = elem->data;
         if (!cc->set && cc->isfunc(c) ||
              cc->set && isincc(m, cc->set, c))
-            match = cc->not ? 0 : 1;
+            retval = cc->not ? 0 : 1;
         if (m->error)
             return -1;
     }
-    return match;
+    return retval;
 }
 
-/* Increments one particular path by a character and return a new list of
-paths for it in m->next_paths.  */
 static void
-get_next_paths (Matcher *m, const char *pos, Node *pathnode) {
+advance_cursor (Matcher *m, Cursor *cursor) {
     List *elem;
-    Path *path = pathnode->data;
-
-    /* reference path node for the duration of the function  */
-    pathnode->refs++;
-
-    if (path->state->assertfunc) {
-        if (!path->state->assertfunc(m->str, pos)) {
-            path_node_free_branch(pathnode);
+    cursor->refs++;
+    if (cursor->state->assertfunc) {
+        if (!cursor->state->assertfunc(m->str, m->pos)) {
+            cursor_free_branch(cursor);
             return;
         }
     }
-    if (!path->state->transitions) {
-        if (path->backs) {
+    if (!cursor->state->transitions) {
+        if (cursor->backs) {
             /* leave group  */
-            Node *nextnode;
-            Path *next = path_new(pos, NULL, path->backs);
+            Cursor *next = cursor_new(cursor, m->pos, NULL, cursor->backs);
             next->backs = list_pop(next->backs, &next->state);
-            nextnode = node_new(pathnode, next);
-            get_next_paths(m, pos, nextnode);
+            advance_cursor(m, next);
             if (m->error)
                 return;
         }
         else {
             /* end state  */
-            pathnode->refs++;
-            m->matches = list_push(m->matches, pathnode);
+            cursor->refs++;
+            m->matches = list_push(m->matches, cursor);
         }
     }
-    for (elem = path->state->transitions; elem; elem = elem->next) {
+    for (elem = cursor->state->transitions; elem; elem = elem->next) {
         Transition *t = elem->data;
-        Path *next;
-        Node *nextnode;
-        if (t->type == CHAR && t->c != *pos)
+        Cursor *next;
+        if (t->type == CHAR && t->c != *m->pos)
             continue;
-        if (t->type == NEGCHAR && t->c == *pos)
+        if (t->type == NEGCHAR && t->c == *m->pos)
             continue;
         if (t->type == CAPTURE && !t->to) {
             Rx *capture = list_nth_data(m->rx->captures, t->c);
@@ -240,89 +220,83 @@ get_next_paths (Matcher *m, const char *pos, Node *pathnode) {
             }
             t->to = capture->start;
         }
-        if (t->type == CHARCLASS && !isinccc(m, t->ccc, *pos))
+        if (t->type == CHARCLASS && !isinccc(m, t->ccc, *m->pos))
             continue;
         if (m->error)
             return;
-        next = path_new(pos, t->to, path->backs);
-        nextnode = node_new(pathnode, next);
+        next = cursor_new(cursor, m->pos, t->to, cursor->backs);
         if (t->back)
             next->backs = list_push(next->backs, t->back);
         if (t->type == NOCHAR || t->type == CAPTURE) {
-            get_next_paths(m, pos, nextnode);
+            advance_cursor(m, next);
             if (m->error)
                 return;
         }
         else {
             next->pos++;
-            m->next_paths = list_push(m->next_paths, nextnode);
+            m->cursors = list_push(m->cursors, next);
         }
     }
-    if (--pathnode->refs <= 0)
-        path_node_free_branch(pathnode);
+    cursor_free_branch(cursor);
 }
 
 static void
-matcher_print (Matcher *m, int i) {
+cursor_print (Cursor *cursor) {
+    if (!cursor)
+        return;
+    cursor_print(cursor->parent);
+    printf("%p %d -> ", cursor, cursor->refs);
+}
+
+static void
+matcher_print (Matcher *m) {
     List *elem;
-    printf("iter %d\n", i);
-    for (elem = m->paths; elem; elem = elem->next) {
-        Node *node = elem->data;
-        Path *path = node->data;
-        printf("path '%.*s'\n", path->pos - m->startpos, m->startpos);
+    for (elem = m->cursors; elem; elem = elem->next) {
+        Cursor *cursor = elem->data;
+        cursor_print(cursor);
+        printf("cursor '%.*s'\n", cursor->pos - m->startpos, m->startpos);
     }
     for (elem = m->matches; elem; elem = elem->next) {
-        Node *node = elem->data;
-        Path *path = node->data;
-        printf("match '%.*s'\n", path->pos - m->startpos, m->startpos);
+        Cursor *match = elem->data;
+        cursor_print(match);
+        printf("match '%.*s'\n", match->pos - m->startpos, m->startpos);
     }
 }
 
 /* find all the ways in which the string can match the given regex */
 static Matcher *
 get_all_matches (Rx *rx, const char *str) {
-    Matcher *m;
-    const char *startpos = str;
+    Matcher *m = matcher_new(rx, str);
     while (1) {
         int i = 0;
-        const char *pos = startpos;
-        Node *root = node_new(NULL, path_new(pos, rx->start, NULL));
-        m = calloc(1, sizeof (Matcher));
-        m->paths = list_push(m->paths, root);
-        m->str = str;
-        m->startpos = startpos;
-        m->rx = rx;
+        matcher_prep(m);
         while (1) {
             List *elem;
-            for (elem = m->paths; elem; elem = elem->next) {
-                Node *path = elem->data;
-                get_next_paths(m, pos, path);
-                if (m->error) {
-                    fprintf(stderr, "%s\n", m->error);
-                    matcher_free(m);
+            List *cursors = m->cursors;
+            m->cursors = NULL;
+            for (elem = cursors; elem; elem = elem->next) {
+                Cursor *cursor = elem->data;
+                advance_cursor(m, cursor);
+                if (m->error)
                     return NULL;
-                }
             }
-            list_free(m->paths, NULL);
-            m->paths = m->next_paths;
-            m->next_paths = NULL;
-            if (rx_debug)
-                matcher_print(m, ++i);
-            if (!m->paths)
+            list_free(cursors, NULL);
+            if (rx_debug) {
+                printf("iter %d\n", ++i);
+                matcher_print(m);
+            }
+            if (!m->cursors)
                 break;
-            if (!*pos++)
+            if (!*m->pos++)
                 break;
         }
-        if (pos == str && rx->start->assertfunc == bos)
+        if (m->pos == m->str && rx->start->assertfunc == bos)
             break;
         if (m->matches)
             break;
-        if (!*startpos++)
+        if (!*m->startpos++)
             break;
-        matcher_free(m);
     }
-    list_free(m->paths, path_node_free_branch);
-    m->paths = NULL;
     return m;
 }
 
@@ -343,6 +317,8 @@ rx_match (Rx *rx, const char *str) {
     if (rx_debug)
         printf("matching against '%s'\n", str);
     m = get_all_matches(rx, str);
+    if (m->error)
+        fprintf(stderr, "%s\n", m->error);
     retval = m && m->matches ? 1 : 0;
     matcher_free(m);
     if (rx_debug)

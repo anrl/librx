@@ -8,7 +8,6 @@ char *strdupf (const char *fmt, ...);
 
 /* list  */
 typedef struct List List;
-
 struct List {
     void *data;
     List *next;
@@ -21,29 +20,15 @@ int   list_elems     (List *list);
 List *list_pop       (List *list, void *dump);
 List *list_copy      (List *list);
 List *list_cat       (List *a, List *b);
-void  list_free      (List *list, void (*freefunc) ());
+List *list_free      (List *list, void (*freefunc) ());
 List *list_find      (List *list, void *data, int (*cmpfunc) ());
 List *list_remove    (List *list, void *data, int (*cmpfunc) (),
                       void (*freefunc) ());
 
-/* tree  */
-typedef struct Node Node;
-
-struct Node {
-    void *data;
-    Node *parent;
-    List *children;
-    int   refs;
-};
-
-Node *node_new         (Node *parent, void *data);
-void  node_free        (Node *leaf, void (*freefunc) ());
-void  node_free_branch (Node *leaf, void (*freefunc) ());
-
 /* state  */
 typedef struct {
+    Rx   *group;
     List *transitions;
-    Rx *group;
     int (*assertfunc) (const char *str, const char *pos);
 } State;
 
@@ -73,6 +58,22 @@ typedef struct {
 State      *state_new      (Rx *rx);
 void        state_free     (State *state);
 Transition *transition_new (State *from, State *to);
+
+/* cursor  */
+typedef struct Cursor Cursor;
+struct Cursor {
+    Cursor     *parent;
+    List       *children;
+    int         refs;
+    const char *pos;
+    State      *state;
+    List       *backs;
+};
+
+Cursor *cursor_new         (Cursor *parent, const char *pos, State *state,
+                            List *backs);
+void    cursor_free        (Cursor *c);
+void    cursor_free_branch (Cursor *c);
 
 /* matcher  */
 int isword (int c);

@@ -8,12 +8,12 @@ all: rx.a rxtry t
 t: rx.a FORCE
 	make -C t/
 
-rx.a: rx.o handy.o list.o tree.o state.o parser.o matcher.o
+rx.a: rx.o handy.o list.o state.o cursor.o parser.o matcher.o
 rx.o: rx.c rx.h rxpriv.h
 handy.o: handy.c rx.h rxpriv.h
 list.o: list.c rx.h rxpriv.h
-tree.o: tree.c rx.h rxpriv.h
 state.o: state.c rx.h rxpriv.h
+cursor.o: cursor.c rx.h rxpriv.h
 parser.o: parser.c rx.h rxpriv.h
 matcher.o: matcher.c rx.h rxpriv.h
 

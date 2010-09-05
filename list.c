@@ -81,7 +81,7 @@ list_cat (List *a, List *b) {
     return a;
 }
 
-void
+List *
 list_free (List *list, void (*freefunc) ()) {
     List *item, *next;
     for (item = list; item; item = next) {
@@ -90,6 +90,7 @@ list_free (List *list, void (*freefunc) ()) {
             freefunc(item->data);
         free(item);
     }
+    return NULL;
 }
 
 List *
