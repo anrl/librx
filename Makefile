@@ -3,7 +3,7 @@ CFLAGS = -g -O0 -Wall -Wno-parentheses
 %.a:
 	$(AR) rcs $@ $(filter %.o, $^)
 
-all: rx.a rxtry t/test
+all: rx.a rxtry rxdot t/test
 
 rx.a: rx.o handy.o list.o state.o cursor.o parser.o matcher.o
 rx.o: rx.c rx.h rxpriv.h
@@ -16,6 +16,9 @@ matcher.o: matcher.c rx.h rxpriv.h
 
 rxtry: rxtry.o rx.a
 rxtry.o: rxtry.c rx.h
+
+rxdot: rxdot.o rx.a
+rxdot.o: rxdot.c rx.h
 
 t/test: t/test.o t/tap.o rx.a
 t/test.o: t/test.c rx.h t/tap.h

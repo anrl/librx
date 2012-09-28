@@ -522,8 +522,6 @@ rx_new (const char *rx_str) {
     Parser *p = calloc(1, sizeof (Parser));
     p->top = p->rx = calloc(1, sizeof (Rx));
     p->rx->end = p->rx->start = state_new(p->rx);
-    if (rx_debug)
-        printf("/%s/\n", rx_str);
     disjunction(p, pos, &pos);
     if (!p->error) {
         ws(pos, &pos);

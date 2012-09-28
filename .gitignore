@@ -1,5 +1,6 @@
 *.a
 *.o
 /rxtry
+/rxdot
 /t/test
 

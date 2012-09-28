@@ -25,24 +25,29 @@ void
 rx_print (Rx *rx) {
     List *elem;
     int level = 0;
+    printf("digraph G {\n");
     for (elem = rx->states; elem; elem = elem->next) {
         State *state = elem->data;
+        printf("\"%p\"", state);
         if (!state->transitions && !level)
-            printf("end ");
-        printf("state at %p\n", state);
+            printf(" [fillcolor=yellow,style=filled]");
+        printf("\n");
         {
             List *elem;
             for (elem = state->transitions; elem; elem = elem->next) {
                 Transition *t = elem->data;
-                printf("    transition ");
+                printf("\"%p\" -> \"%p\"", state, t->to);
                 if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
-                    printf("'%c' ", t->c);
-                printf("to %p\n", t->to);
-                if (t->back)
+                    printf(" [label=\"%c\"]", t->c);
+                printf("\n");
+                if (t->back) {
+                    printf("\"%p\" -> \"%p\" [color=blue,style=dotted]\n", state, t->back);
                     level++;
+                }
             }
         }
     }
+    printf("}\n");
 }
 
 /*
@@ -52,7 +57,7 @@ hmmm... case where longest isnt greedy
 All possible matches will be found regarding greedy and non greedy.
 
 Grouping will cause the creation of a new regex and the nfa will only reference
-it. That way thay can be reused either by number or name later in the regex. 
+it. That way thay can be reused either by number or name later in the regex.
 This allows for matching things like balanced parentheses.
 
 Im not sure what to do about empty atoms '', "", <?> etc. If quantified (''*)
