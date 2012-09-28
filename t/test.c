@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <tap.h>
+#include "tap.h"
 #include "../rxpriv.h"
 
 #define rx_like(...)   rx_like_at_loc(1, __FILE__, __LINE__, __VA_ARGS__, NULL)
@@ -89,7 +89,7 @@ main () {
     rx_like   ("foofoofoo", "foo<~~>*", "overall capture match");
     skip(1, 1, "errors should not be sent to stdout by default");
     rx_unlike ("aabb", "a<~~0>", "match error: capture 0 doesn't exist");
-    endskip;
+    end_skip;
     rx_like   ("R", "<[A..Z]>", "char class");
     rx_unlike ("r", "<[A..Z]>", "fail char class");
     rx_like   ("overall the same", "<alpha>+<space>+<alpha>+", "named char classes");
