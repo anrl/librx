@@ -1,0 +1,5 @@
+*.a
+*.o
+/rxtry
+/t/test
+
