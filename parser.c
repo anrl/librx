@@ -452,18 +452,19 @@ atom (Parser *p, const char *pos, const char **fin) {
              <quote>) <quantifier>  */
     State *start = p->rx->end;
     State *astart;
+    int amatch;
     ws(pos, &pos);
     if (assertion(p, pos, &pos)) {
         *fin = pos;
         return 1;
     }
     astart = p->rx->end = state_new(p->rx);
-    if      (character  (p, pos, &pos)) ;
-    else if (escape     (p, pos, &pos)) ;
-    else if (group      (p, pos, &pos)) ;
-    else if (metasyntax (p, pos, &pos)) ;
-    else if (quote      (p, pos, &pos)) ;
-    else {
+    amatch = character(p, pos, &pos) ||
+             escape(p, pos, &pos) ||
+             group(p, pos, &pos) ||
+             metasyntax(p, pos, &pos) ||
+             quote(p, pos, &pos);
+    if (!amatch) {
         p->rx->end = start;
         return 0;
     }
