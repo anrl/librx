@@ -50,6 +50,8 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
         return;
     set_insert(visited, n, state);
     printf("\"%p\"", state);
+    if (rx->start == state)
+        printf(" [fillcolor=yellow,style=filled]");
     if (rx->end == state)
         printf(" [fillcolor=yellow,style=filled]");
     printf("\n");
