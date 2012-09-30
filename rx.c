@@ -21,32 +21,56 @@ rx_extends (Rx *rx, Rx *parent) {
     rx->extends = list_push(rx->extends, parent);
 }
 
+static int
+set_index (void **set, int n, void *key) {
+    int index = (int) key % n;
+    while (set[index] && set[index] != key)
+        index = (index + 1) % n;
+    return index;
+}
+
+static void
+set_insert (void **set, int n, void *key) {
+    int index = set_index(set, n, key);
+    set[index] = key;
+}
+
+static void *
+set_lookup (void **set, int n, void *key) {
+    int index = set_index(set, n, key);
+    return set[index] == key ? key : NULL;
+}
+
+static void
+rx_print_state (Rx *rx, State *state, void **visited, int n) {
+    List *elem;
+    if (!state)
+        return;
+    if (set_lookup(visited, n, state))
+        return;
+    set_insert(visited, n, state);
+    printf("\"%p\"", state);
+    if (rx->end == state)
+        printf(" [fillcolor=yellow,style=filled]");
+    printf("\n");
+    for (elem = state->transitions; elem; elem = elem->next) {
+        Transition *t = elem->data;
+        printf("\"%p\" -> \"%p\"", state, t->to);
+        if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
+            printf(" [label=\"%c\"]", t->c);
+        if (t->back)
+            printf(" [color=blue,style=dotted,label=\"back to %p\"]", t->back);
+        printf("\n");
+        rx_print_state(rx, t->to, visited, n);
+        rx_print_state(rx, t->back, visited, n);
+    }
+}
+
 void
 rx_print (Rx *rx) {
-    List *elem;
-    int level = 0;
+    void *visited[4096] = {0};
     printf("digraph G {\n");
-    for (elem = rx->states; elem; elem = elem->next) {
-        State *state = elem->data;
-        printf("\"%p\"", state);
-        if (!state->transitions && !level)
-            printf(" [fillcolor=yellow,style=filled]");
-        printf("\n");
-        {
-            List *elem;
-            for (elem = state->transitions; elem; elem = elem->next) {
-                Transition *t = elem->data;
-                printf("\"%p\" -> \"%p\"", state, t->to);
-                if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
-                    printf(" [label=\"%c\"]", t->c);
-                printf("\n");
-                if (t->back) {
-                    printf("\"%p\" -> \"%p\" [color=blue,style=dotted]\n", state, t->back);
-                    level++;
-                }
-            }
-        }
-    }
+    rx_print_state(rx, rx->start, visited, sizeof visited / sizeof visited[0]);
     printf("}\n");
 }
 
