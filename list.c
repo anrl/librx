@@ -43,8 +43,8 @@ list_elems (List *list) {
 
 void *
 list_nth_data (List *list, int n) {
-    int i = 0;
-    for (; list; list = list->next, i++) {
+    int i;
+    for (i = 0; list; list = list->next, i++) {
         if (i == n)
             return list->data;
     }

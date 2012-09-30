@@ -317,91 +317,98 @@ character (Parser *p, const char *pos, const char **fin) {
 }
 
 static int
-genquantifier (Parser *p, const char *pos, const char **fin, State *start,
-               State *astart)
-{
-    /* genquantifier: '**' \d+ ('..' (\d+ | '*'))? */
-    int i, min;
-    if (strncmp(pos, "**", 2))
-        return 0;
-    pos += 2;
-    ws(pos, &pos);
-    if (!integer(p, pos, fin)) {
-        p->error = strdupf("expected integer at '%s'", pos);
-        return -1;
-    }
-    min = atoi(pos);
-    if (min < 0) {
-        p->error = strdupf("only non negative ints allowed at '%s'", pos);
-        return -1;
-    }
-    pos = *fin;
-    p->rx->end = start;
-    for (i = 0; i < min; i++) {
-        Transition *t = transition_new(p->rx->end, astart);
-        t->back = p->rx->end = state_new(p->rx);
-    }
-    ws(pos, &pos);
-    *fin = pos;
-    if (strncmp(pos, "..", 2))
-        return 1;
-    pos += 2;
-    ws(pos, &pos);
-    if (integer(p, pos, fin)) {
-        State *end;
-        int max = atoi(pos);
-        if (max <= min) {
-            p->error = strdupf("can't do ** n..m with n >= m at '%s'", pos);
+quantifier (Parser *p, const char *pos, const char **fin, State *start) {
+    /* quantifier: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
+    int i, min = 1, max = 1;
+    if (!strncmp(pos, "**", 2)) {
+        pos += 2;
+        ws(pos, &pos);
+        if (!integer(p, pos, fin)) {
+            p->error = strdupf("expected integer at '%s'", pos);
+            return -1;
+        }
+        min = max = atoi(pos);
+        if (min < 0) {
+            p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
         pos = *fin;
-        transition_new(p->rx->end, end = state_new(p->rx));
-        for (i = 0; i < max - min; i++) {
-            Transition *t = transition_new(p->rx->end, astart);
-            t->back = p->rx->end = state_new(p->rx);
-            transition_new(p->rx->end, end);
+        ws(pos, &pos);
+        *fin = pos;
+        if (!strncmp(pos, "..", 2)) {
+            pos += 2;
+            ws(pos, &pos);
+            if (integer(p, pos, fin)) {
+                max = atoi(pos);
+                if (max <= min) {
+                    p->error = strdupf("can't do ** n..m with m <= n at '%s'", pos);
+                    return -1;
+                }
+                pos = *fin;
+            }
+            else if (*pos == '*') {
+                max = 0;
+                pos++;
+            }
+            else {
+                p->error = strdupf("expected integer or '*' at '%s'", pos);
+                return -1;
+            }
         }
-        p->rx->end = end;
     }
     else if (*pos == '*') {
+        min = 0;
+        max = 0;
         pos++;
-        Transition *t = transition_new(p->rx->end, astart);
-        t->back = p->rx->end;
+    }
+    else if (*pos == '+') {
+        min = 1;
+        max = 0;
+        pos++;
+    }
+    else if (*pos == '?') {
+        min = 0;
+        max = 1;
+        pos++;
     }
     else {
-        p->error = strdupf("expected integer or '*' at '%s'", pos);
-        return -1;
+        return 0;
     }
     *fin = pos;
-    return 1;
-}
-
-static int
-quantifier (Parser *p, const char *pos, const char **fin, State *start,
-            State *astart)
-{
-    /* quantifier: <genquantifier> | '?' | '*' | '+' | ''  */
-    if (genquantifier(p, pos, &pos, start, astart)) {
-        if (p->error)
-            return -1;
+    if (min == 1 && max == 1) {
+    }
+    else if (min == 0 && max == 0) {
+        transition_new(p->rx->end, start);
+        p->rx->end = start;
+    }
+    else if (min == 1 && max == 0) {
+        transition_new(p->rx->end, start);
+    }
+    else if (min == 0 && max == 1) {
+        transition_new(start, p->rx->end);
     }
     else {
-        transition_new(start, astart);
-        if (*pos == '*') {
-            transition_new(p->rx->end, start);
-            p->rx->end = start;
-            pos++;
+        State *atom = state_split(start);
+        p->rx->end = start;
+        for (i = 0; i < min; i++) {
+            Transition *t = transition_new(p->rx->end, atom);
+            t->back = p->rx->end = state_new(p->rx);
         }
-        else if (*pos == '+') {
-            transition_new(p->rx->end, start);
-            pos++;
+        if (max > min) {
+            State *end = state_new(p->rx);
+            transition_new(p->rx->end, end);
+            for (i = 0; i < max - min; i++) {
+                Transition *t = transition_new(p->rx->end, atom);
+                t->back = p->rx->end = state_new(p->rx);
+                transition_new(p->rx->end, end);
+            }
+            p->rx->end = end;
         }
-        else if (*pos == '?') {
-            transition_new(start, p->rx->end);
-            pos++;
+        if (!max) {
+            Transition *t = transition_new(p->rx->end, atom);
+            t->back = p->rx->end;
         }
     }
-    *fin = pos;
     return 1;
 }
 
@@ -451,27 +458,23 @@ atom (Parser *p, const char *pos, const char **fin) {
     /* atom: <assertion> | (<character> | <escape> | <group> | <metasyntax> |
              <quote>) <quantifier>  */
     State *start = p->rx->end;
-    State *astart;
     int amatch;
     ws(pos, &pos);
     if (assertion(p, pos, &pos)) {
         *fin = pos;
         return 1;
     }
-    astart = p->rx->end = state_new(p->rx);
     amatch = character(p, pos, &pos) ||
              escape(p, pos, &pos) ||
              group(p, pos, &pos) ||
              metasyntax(p, pos, &pos) ||
              quote(p, pos, &pos);
-    if (!amatch) {
-        p->rx->end = start;
+    if (!amatch)
         return 0;
-    }
     if (p->error)
         return -1;
     ws(pos, &pos);
-    quantifier(p, pos, &pos, start, astart);
+    quantifier(p, pos, &pos, start);
     if (p->error)
         return -1;
     *fin = pos;

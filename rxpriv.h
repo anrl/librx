@@ -56,6 +56,7 @@ typedef struct {
 } Transition;
 
 State      *state_new      (Rx *rx);
+State      *state_split    (State *state);
 void        state_free     (State *state);
 Transition *transition_new (State *from, State *to);
 

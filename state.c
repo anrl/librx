@@ -30,6 +30,16 @@ state_new (Rx *rx) {
     return state;
 }
 
+State *
+state_split (State *state) {
+    State *next = state_new(state->group);
+    next->transitions = state->transitions;
+    state->transitions = NULL;
+    next->assertfunc = state->assertfunc;
+    state->assertfunc = NULL;
+    return next;
+}
+
 void
 state_free (State *state) {
     list_free(state->transitions, transition_free);
