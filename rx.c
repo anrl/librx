@@ -6,6 +6,17 @@ Perl 5, and Perl 6. */
 #include <ctype.h>
 #include "rxpriv.h"
 
+Rx *
+rx_new (const char *regex) {
+    Rx *rx = calloc(1, sizeof (Rx));
+    rx->regex = regex;
+    if (!rx_parse(rx)) {
+        rx_free(rx);
+        return NULL;
+    }
+    return rx;
+}
+
 void
 rx_free (Rx *rx) {
     list_free(rx->states, state_free);

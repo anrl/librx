@@ -513,14 +513,12 @@ disjunction (Parser *p, const char *pos, const char **fin) {
     return 1;
 }
 
-Rx *
-rx_new (const char *regex) {
-    const char *pos = regex;
-    Rx *rx = calloc(1, sizeof (Rx));
+int
+rx_parse (Rx *rx) {
+    const char *pos = rx->regex;
     Parser *p = calloc(1, sizeof (Parser));
-    rx->regex = regex;
-    rx->end = rx->start = state_new(rx);
     p->top = p->rx = rx;
+    rx->end = rx->start = state_new(rx);
     disjunction(p, pos, &pos);
     if (!p->error) {
         ws(pos, &pos);
@@ -530,10 +528,10 @@ rx_new (const char *regex) {
     if (p->error) {
         fprintf(stderr, "%s\n", p->error);
         free(p->error);
-        rx_free(rx);
-        rx = NULL;
+        free(p);
+        return 0;
     }
     free(p);
-    return rx;
+    return 1;
 }
 

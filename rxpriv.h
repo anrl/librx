@@ -72,6 +72,10 @@ int wb     (const char *str, const char *pos);
 int nwb    (const char *str, const char *pos);
 
 /* parser  */
+int rx_parse (Rx *rx);
+int ws       (const char *pos, const char **fin);
+
+/* rx  */
 struct Rx {
     const char *regex;
     List       *extends;
@@ -83,9 +87,6 @@ struct Rx {
     List       *subrules;
 };
 
-int ws (const char *pos, const char **fin);
-
-/* rx  */
 Rx *rx_extend (Rx *parent);
 
 #endif
