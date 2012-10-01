@@ -60,22 +60,6 @@ State      *state_split    (State *state);
 void        state_free     (State *state);
 Transition *transition_new (State *from, State *to);
 
-/* cursor  */
-typedef struct Cursor Cursor;
-struct Cursor {
-    Cursor     *parent;
-    List       *children;
-    int         refs;
-    const char *pos;
-    State      *state;
-    List       *backs;
-};
-
-Cursor *cursor_new         (Cursor *parent, const char *pos, State *state,
-                            List *backs);
-void    cursor_free        (Cursor *c);
-void    cursor_free_branch (Cursor *c);
-
 /* matcher  */
 int isword (int c);
 int bos    (const char *str, const char *pos);
