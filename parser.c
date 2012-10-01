@@ -205,13 +205,7 @@ group (Parser *p, const char *pos, const char **fin) {
         case '[': rdelimeter = ']'; break;
         default: return 0;
     }
-    p->rx = calloc(1, sizeof (Rx));
-    rx_extends(p->rx, orig);
-    p->rx->end = p->rx->start = state_new(p->rx);
-    if (ldelimeter == '(')
-        orig->captures = list_push(orig->captures, p->rx);
-    else
-        orig->clusters = list_push(orig->clusters, p->rx);
+    p->rx = rx_extend(orig);
     t = transition_new(orig->end, p->rx->start);
     t->back = state_new(orig);
     disjunction(p, pos, fin);

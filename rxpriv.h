@@ -102,7 +102,8 @@ struct Rx {
 int ws (const char *pos, const char **fin);
 
 /* rx  */
-void rx_print (Rx *rx);
+Rx   *rx_extend (Rx *parent);
+void  rx_print  (Rx *rx);
 
 #endif
 

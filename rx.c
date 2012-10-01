@@ -16,9 +16,12 @@ rx_free (Rx *rx) {
     free(rx);
 }
 
-void
-rx_extends (Rx *rx, Rx *parent) {
+Rx *
+rx_extend (Rx *parent) {
+    Rx *rx = calloc(1, sizeof (Rx));
     rx->extends = list_push(rx->extends, parent);
+    rx->end = rx->start = state_new(rx);
+    return rx;
 }
 
 static int
