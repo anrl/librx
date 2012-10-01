@@ -533,8 +533,6 @@ rx_new (const char *rx_str) {
         free(p);
         return NULL;
     }
-    if (rx_debug)
-        rx_print(p->top);
     rx = p->top;
     free(p);
     return rx;

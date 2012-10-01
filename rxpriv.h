@@ -60,7 +60,7 @@ State      *state_split    (State *state);
 void        state_free     (State *state);
 Transition *transition_new (State *from, State *to);
 
-/* matcher  */
+/* assertions  */
 int isword (int c);
 int bos    (const char *str, const char *pos);
 int bol    (const char *str, const char *pos);
@@ -74,7 +74,7 @@ int nwb    (const char *str, const char *pos);
 /* parser  */
 struct Rx {
     List  *extends;
-    char  *name;
+    char  *regex;
     State *start;
     State *end;
     List  *states;
@@ -86,8 +86,7 @@ struct Rx {
 int ws (const char *pos, const char **fin);
 
 /* rx  */
-Rx   *rx_extend (Rx *parent);
-void  rx_print  (Rx *rx);
+Rx *rx_extend (Rx *parent);
 
 #endif
 
