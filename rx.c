@@ -19,6 +19,7 @@ rx_free (Rx *rx) {
 Rx *
 rx_extend (Rx *parent) {
     Rx *rx = calloc(1, sizeof (Rx));
+	rx->regex = parent->regex;
     rx->extends = list_push(rx->extends, parent);
     rx->end = rx->start = state_new(rx);
     return rx;

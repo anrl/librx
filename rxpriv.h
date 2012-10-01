@@ -73,14 +73,14 @@ int nwb    (const char *str, const char *pos);
 
 /* parser  */
 struct Rx {
-    List  *extends;
-    char  *regex;
-    State *start;
-    State *end;
-    List  *states;
-    List  *captures;
-    List  *clusters;
-    List  *subrules;
+    const char *regex;
+    List       *extends;
+    State      *start;
+    State      *end;
+    List       *states;
+    List       *captures;
+    List       *clusters;
+    List       *subrules;
 };
 
 int ws (const char *pos, const char **fin);
