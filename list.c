@@ -15,6 +15,15 @@ list_push (List *list, void *data) {
 }
 
 List *
+list_unshift (List *list, void *data) {
+    List *new_list;
+    new_list = calloc(1, sizeof (List));
+    new_list->data = data;
+    new_list->next = list;
+    return new_list;
+}
+
+List *
 list_copy (List *list) {
     List *item;
     List *new = NULL;

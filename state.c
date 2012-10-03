@@ -2,12 +2,6 @@
 #include <stdio.h>
 #include "rxpriv.h"
 
-void
-charclass_free (CharClass *cc) {
-    free(cc->set);
-    free(cc);
-}
-
 Transition *
 transition_new (State *from, State *to) {
     Transition *t = calloc(1, sizeof (Transition));
@@ -18,7 +12,7 @@ transition_new (State *from, State *to) {
 
 void
 transition_free (Transition *t) {
-    list_free(t->ccc, charclass_free);
+    char_class_free(t->cc);
     free(t);
 }
 

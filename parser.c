@@ -8,7 +8,6 @@ typedef struct {
     char *error;
     Rx *top;
     Rx *rx;
-    CharClass *cc;
 } Parser;
 
 static int disjunction ();
@@ -62,104 +61,121 @@ ws (const char *pos, const char **fin) {
 }
 
 static int
-namedcharclass (Parser *p, const char **pos, const char *name,
-                int (*isfunc) ())
-{
-    int len = strlen(name);
-    if (strncmp(*pos, name, len))
-        return 0;
-    *pos += len;
-    p->cc = calloc(1, sizeof (CharClass));
-    p->cc->isfunc = isfunc;
-    return 1;
-}
-
-static int
-charclass (Parser *p, const char *pos, const char **fin) {
-    /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
-                  xdigit | print | graph | cntrl | punct | alnum | space |
-                  blank | word  */
-    if (*pos == '[') {
-        const char *start = ++pos;
-        while (1) {
-            if (!strncmp(pos, "\\]", 2))
-                pos += 2;
-            else if (*pos && *pos != ']')
-                pos++;
-            else
-                break;
-        }
-        if (*pos != ']') {
-            p->error = strdupf("expected ']' at '%s'", pos);
-            return -1;
-        }
-        p->cc = calloc(1, sizeof (CharClass));
-        p->cc->set = strdupf("%.*s", pos - start, start);
-        pos++;
-    }
-    else if (namedcharclass(p, &pos, "xdigit", isxdigit)) ;
-    else if (namedcharclass(p, &pos, "upper",  isupper))  ;
-    else if (namedcharclass(p, &pos, "lower",  islower))  ;
-    else if (namedcharclass(p, &pos, "alpha",  isalpha))  ;
-    else if (namedcharclass(p, &pos, "digit",  isdigit))  ;
-    else if (namedcharclass(p, &pos, "print",  isprint))  ;
-    else if (namedcharclass(p, &pos, "graph",  isgraph))  ;
-    else if (namedcharclass(p, &pos, "cntrl",  iscntrl))  ;
-    else if (namedcharclass(p, &pos, "punct",  ispunct))  ;
-    else if (namedcharclass(p, &pos, "alnum",  isalnum))  ;
-    else if (namedcharclass(p, &pos, "space",  isspace))  ;
-    else if (namedcharclass(p, &pos, "blank",  isblank))  ;
-    else if (namedcharclass(p, &pos, "word",   isword))   ;
-    else
+named_char_class (const char *pos, const char **fin, int (**func)()) {
+    !strncmp(pos, "alnum", 5)  && (pos += 5) && (*func = isalnum) ||
+    !strncmp(pos, "alpha", 5)  && (pos += 5) && (*func = isalpha) ||
+    !strncmp(pos, "blank", 5)  && (pos += 5) && (*func = isblank) ||
+    !strncmp(pos, "cntrl", 5)  && (pos += 5) && (*func = iscntrl) ||
+    !strncmp(pos, "digit", 5)  && (pos += 5) && (*func = isdigit) ||
+    !strncmp(pos, "graph", 5)  && (pos += 5) && (*func = isgraph) ||
+    !strncmp(pos, "lower", 5)  && (pos += 5) && (*func = islower) ||
+    !strncmp(pos, "print", 5)  && (pos += 5) && (*func = isprint) ||
+    !strncmp(pos, "punct", 5)  && (pos += 5) && (*func = ispunct) ||
+    !strncmp(pos, "space", 5)  && (pos += 5) && (*func = isspace) ||
+    !strncmp(pos, "upper", 5)  && (pos += 5) && (*func = isupper) ||
+    !strncmp(pos, "word", 4)   && (pos += 4) && (*func = isword) ||
+    !strncmp(pos, "xdigit", 6) && (pos += 6) && (*func = isxdigit);
+    if (!*func)
         return 0;
     *fin = pos;
     return 1;
 }
 
 static int
-charclasscombo (Parser *p, const char *pos, const char **fin) {
-    /* charclasscombo: <[+-]>? <charclass> (<[+-]> <charclass>)*  */
-    Transition *t = NULL;
-    int not = 0;
-    if (*pos == '+' || *pos == '-') {
-        not = *pos == '-';
-        pos++;
-        ws(pos, &pos);
-    }
-    if (charclass(p, pos, fin)) {
-        if (p->error)
+char_class (Parser *p, const char *pos, const char **fin, List **cc) {
+    /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
+                  xdigit | print | graph | cntrl | punct | alnum | space |
+                  blank | word  */
+    List *action = NULL;
+    int (*func) () = NULL;
+    *cc = NULL;
+    if (*pos == '[') {
+        while (1) {
+            pos++;
+            ws(pos, &pos);
+            if (!pos[0] || pos[0] == ']') {
+                break;
+            }
+            else if (action && action->data == (void *) CC_CHAR &&
+                     !strncmp(pos, "..", 2)) {
+                pos++;
+                action->data = (void *) CC_RANGE;
+                continue;
+            }
+            if (!action || action->data == (void *) CC_CHAR)
+                action = *cc = list_push(*cc, (void *) CC_CHAR);
+            if (pos[0] == '\\') {
+                if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
+                    *cc = list_push(*cc, (void *) pos[1]);
+                else if (pos[1] == 'n')
+                    *cc = list_push(*cc, (void *) '\n');
+                else if (pos[1] == 'r')
+                    *cc = list_push(*cc, (void *) '\r');
+                else if (pos[1] == 't')
+                    *cc = list_push(*cc, (void *) '\t');
+                else
+                    break;
+                pos++;
+            }
+            else {
+                *cc = list_push(*cc, (void *) pos[0]);
+            }
+            if (action->data == (void *) CC_RANGE)
+                action = NULL;
+        }
+        if (*pos != ']') {
+            p->error = strdupf("expected ']' at '%s'", pos);
             return -1;
-        pos = *fin;
-        t = transition_new(p->rx->end, state_new(p->rx));
-        t->type = EAT | CHARCLASS;
-        p->cc->not = not;
-        t->ccc = list_push(t->ccc, p->cc);
-        p->rx->end = t->to;
+        }
+        pos++;
+    }
+    else if (named_char_class(pos, &pos, &func)) {
+        *cc = list_push(*cc, (void *) CC_FUNC);
+        *cc = list_push(*cc, func);
     }
     else {
         return 0;
     }
+    *fin = pos;
+    return 1;
+}
+
+static int
+char_class_combo (Parser *p, const char *pos, const char **fin) {
+    /* char_class_combo: <[+-]>? <char_class> (<[+-]> <char_class>)*  */
+    Transition *t;
+    List *cc;
+    int excludes = 0;
+    if (*pos == '+' || *pos == '-') {
+        excludes = *pos == '-';
+        pos++;
+        ws(pos, &pos);
+    }
+    if (!char_class(p, pos, fin, &cc))
+        return 0;
+    if (p->error)
+        return -1;
+    pos = *fin;
+    t = transition_new(p->rx->end, state_new(p->rx));
+    t->type = EAT | CHARCLASS;
+    t->cc = list_push(t->cc, (void *) (excludes ? CC_EXCLUDES : CC_INCLUDES));
+    t->cc = list_cat(t->cc, cc);
+    p->rx->end = t->to;
     while (1) {
         ws(pos, &pos);
-        if (*pos == '+')
-            not = 0;
-        else if (*pos == '-')
-            not = 1;
+        if (*pos == '+' || *pos == '-')
+            excludes = *pos == '-';
         else
             break;
         pos++;
         ws(pos, &pos);
-        if (charclass(p, pos, fin)) {
-            if (p->error)
-                return -1;
-            pos = *fin;
-            p->cc->not = not;
-            t->ccc = list_push(t->ccc, p->cc);
-        }
-        else {
+        if (!char_class(p, pos, fin, &cc))
             p->error = strdupf("expected charclass at '%s'", pos);
+        if (p->error)
             return -1;
-        }
+        pos = *fin;
+        t->cc = list_cat(cc, t->cc);
+        t->cc = list_unshift(t->cc, (void *) (excludes ? CC_EXCLUDES : CC_INCLUDES));
     }
     ws(pos, &pos);
     *fin = pos;
@@ -168,7 +184,7 @@ charclasscombo (Parser *p, const char *pos, const char **fin) {
 
 static int
 metasyntax (Parser *p, const char *pos, const char **fin) {
-    /* metasyntax: '<' (<captureref> | <charclasscombo>) '>'  */
+    /* metasyntax: '<' (<captureref> | <char_class_combo>) '>'  */
     if (*pos++ != '<')
         return 0;
     if (captureref(p, pos, fin)) {
@@ -176,7 +192,7 @@ metasyntax (Parser *p, const char *pos, const char **fin) {
             return -1;
         pos = *fin;
     }
-    else if (charclasscombo(p, pos, fin)) {
+    else if (char_class_combo(p, pos, fin)) {
         if (p->error)
             return -1;
         pos = *fin;
@@ -248,16 +264,13 @@ escape (Parser *p, const char *pos, const char **fin) {
         return 0;
     t = transition_new(p->rx->end, state_new(p->rx));
     if (charclass) {
-        CharClass *cc = calloc(1, sizeof (CharClass));
-        cc->not = isupper(*pos);
-        if (tolower(*pos) == 's')
-            cc->isfunc = isspace;
-        else if (tolower(*pos) == 'w')
-            cc->isfunc = isword;
-        else if (tolower(*pos) == 'd')
-            cc->isfunc = isdigit;
-        t->ccc = list_push(t->ccc, cc);
+        c = tolower(*pos);
         t->type = EAT | CHARCLASS;
+        t->cc = list_push(t->cc, (void *) (isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
+        t->cc = list_push(t->cc, (void *) CC_FUNC);
+        t->cc = list_push(t->cc, c == 's' ? isspace
+                               : c == 'w' ? isword
+                               : c == 'd' ? isdigit : NULL);
     }
     else {
         t->c = c;

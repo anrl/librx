@@ -14,12 +14,13 @@ struct List {
 };
 
 List *list_push      (List *list, void *data);
+List *list_pop       (List *list, void *dump);
+List *list_unshift   (List *list, void *data);
+List *list_cat       (List *a, List *b);
 void *list_last_data (List *list);
 void *list_nth_data  (List *list, int n);
 int   list_elems     (List *list);
-List *list_pop       (List *list, void *dump);
 List *list_copy      (List *list);
-List *list_cat       (List *a, List *b);
 List *list_free      (List *list, void (*freefunc) ());
 List *list_find      (List *list, void *data, int (*cmpfunc) ());
 List *list_remove    (List *list, void *data, int (*cmpfunc) (),
@@ -42,17 +43,11 @@ typedef enum {
 } TransitionType;
 
 typedef struct {
-    int not;
-    int (*isfunc) ();
-    char *set;
-} CharClass;
-
-typedef struct {
     TransitionType type;
     State *to;
     State *back;
     char c;
-    List *ccc; /* char class combo  */
+    List *cc;
 } Transition;
 
 State      *state_new      (Rx *rx);
@@ -70,6 +65,14 @@ int lwb    (const char *str, const char *pos);
 int rwb    (const char *str, const char *pos);
 int wb     (const char *str, const char *pos);
 int nwb    (const char *str, const char *pos);
+
+/* charclass  */
+typedef enum {
+    CC_EXCLUDES, CC_INCLUDES, CC_CHAR, CC_RANGE, CC_FUNC
+} CharClassAction;
+
+void char_class_free  (List *cc);
+void char_class_print (List *cc);
 
 /* parser  */
 int rx_parse (Rx *rx);
