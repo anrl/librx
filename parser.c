@@ -62,23 +62,23 @@ ws (const char *pos, const char **fin) {
 
 static int
 named_char_class (const char *pos, const char **fin, int (**func)()) {
-    !strncmp(pos, "alnum", 5)  && (pos += 5) && (*func = isalnum) ||
-    !strncmp(pos, "alpha", 5)  && (pos += 5) && (*func = isalpha) ||
-    !strncmp(pos, "blank", 5)  && (pos += 5) && (*func = isblank) ||
-    !strncmp(pos, "cntrl", 5)  && (pos += 5) && (*func = iscntrl) ||
-    !strncmp(pos, "digit", 5)  && (pos += 5) && (*func = isdigit) ||
-    !strncmp(pos, "graph", 5)  && (pos += 5) && (*func = isgraph) ||
-    !strncmp(pos, "lower", 5)  && (pos += 5) && (*func = islower) ||
-    !strncmp(pos, "print", 5)  && (pos += 5) && (*func = isprint) ||
-    !strncmp(pos, "punct", 5)  && (pos += 5) && (*func = ispunct) ||
-    !strncmp(pos, "space", 5)  && (pos += 5) && (*func = isspace) ||
-    !strncmp(pos, "upper", 5)  && (pos += 5) && (*func = isupper) ||
-    !strncmp(pos, "word", 4)   && (pos += 4) && (*func = isword) ||
-    !strncmp(pos, "xdigit", 6) && (pos += 6) && (*func = isxdigit);
-    if (!*func)
-        return 0;
-    *fin = pos;
-    return 1;
+	int retval =
+		!strncmp(pos, "alnum", 5)  && (pos += 5) && (*func = isalnum) ||
+		!strncmp(pos, "alpha", 5)  && (pos += 5) && (*func = isalpha) ||
+		!strncmp(pos, "blank", 5)  && (pos += 5) && (*func = isblank) ||
+		!strncmp(pos, "cntrl", 5)  && (pos += 5) && (*func = iscntrl) ||
+		!strncmp(pos, "digit", 5)  && (pos += 5) && (*func = isdigit) ||
+		!strncmp(pos, "graph", 5)  && (pos += 5) && (*func = isgraph) ||
+		!strncmp(pos, "lower", 5)  && (pos += 5) && (*func = islower) ||
+		!strncmp(pos, "print", 5)  && (pos += 5) && (*func = isprint) ||
+		!strncmp(pos, "punct", 5)  && (pos += 5) && (*func = ispunct) ||
+		!strncmp(pos, "space", 5)  && (pos += 5) && (*func = isspace) ||
+		!strncmp(pos, "upper", 5)  && (pos += 5) && (*func = isupper) ||
+		!strncmp(pos, "word", 4)   && (pos += 4) && (*func = isword)  ||
+		!strncmp(pos, "xdigit", 6) && (pos += 6) && (*func = isxdigit);
+	if (retval)
+		*fin = pos;
+	return retval;
 }
 
 static int
