@@ -13,7 +13,7 @@ main (int argc, char **argv) {
     rx = rx_new(regex);
     if (!rx)
         return 0;
-	rx_print(rx);
+    rx_print(rx);
     rx_free(rx);
     return 0;
 }

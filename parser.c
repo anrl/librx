@@ -62,74 +62,74 @@ ws (const char *pos, const char **fin) {
 
 static int
 named_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
-	int (*func) () = NULL;
-	int retval =
-		!strncmp(pos, "alnum", 5)  && (pos += 5) && (func = isalnum) ||
-		!strncmp(pos, "alpha", 5)  && (pos += 5) && (func = isalpha) ||
-		!strncmp(pos, "blank", 5)  && (pos += 5) && (func = isblank) ||
-		!strncmp(pos, "cntrl", 5)  && (pos += 5) && (func = iscntrl) ||
-		!strncmp(pos, "digit", 5)  && (pos += 5) && (func = isdigit) ||
-		!strncmp(pos, "graph", 5)  && (pos += 5) && (func = isgraph) ||
-		!strncmp(pos, "lower", 5)  && (pos += 5) && (func = islower) ||
-		!strncmp(pos, "print", 5)  && (pos += 5) && (func = isprint) ||
-		!strncmp(pos, "punct", 5)  && (pos += 5) && (func = ispunct) ||
-		!strncmp(pos, "space", 5)  && (pos += 5) && (func = isspace) ||
-		!strncmp(pos, "upper", 5)  && (pos += 5) && (func = isupper) ||
-		!strncmp(pos, "word", 4)   && (pos += 4) && (func = isword)  ||
-		!strncmp(pos, "xdigit", 6) && (pos += 6) && (func = isxdigit);
-	if (!retval)
-		return 0;
-	*fin = pos;
+    int (*func) () = NULL;
+    int retval =
+        !strncmp(pos, "alnum", 5)  && (pos += 5) && (func = isalnum) ||
+        !strncmp(pos, "alpha", 5)  && (pos += 5) && (func = isalpha) ||
+        !strncmp(pos, "blank", 5)  && (pos += 5) && (func = isblank) ||
+        !strncmp(pos, "cntrl", 5)  && (pos += 5) && (func = iscntrl) ||
+        !strncmp(pos, "digit", 5)  && (pos += 5) && (func = isdigit) ||
+        !strncmp(pos, "graph", 5)  && (pos += 5) && (func = isgraph) ||
+        !strncmp(pos, "lower", 5)  && (pos += 5) && (func = islower) ||
+        !strncmp(pos, "print", 5)  && (pos += 5) && (func = isprint) ||
+        !strncmp(pos, "punct", 5)  && (pos += 5) && (func = ispunct) ||
+        !strncmp(pos, "space", 5)  && (pos += 5) && (func = isspace) ||
+        !strncmp(pos, "upper", 5)  && (pos += 5) && (func = isupper) ||
+        !strncmp(pos, "word", 4)   && (pos += 4) && (func = isword)  ||
+        !strncmp(pos, "xdigit", 6) && (pos += 6) && (func = isxdigit);
+    if (!retval)
+        return 0;
+    *fin = pos;
     *cc = list_push(*cc, INT_TO_POINTER(CC_FUNC));
     *cc = list_push(*cc, func);
-	return 1;
+    return 1;
 }
 
 static int
 bracketed_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
     List *action = NULL;
-	int seen_char = 0;
+    int seen_char = 0;
     if (*pos != '[')
-		return 0;
-	while (1) {
-		pos++;
-		ws(pos, &pos);
-		if (!pos[0] || pos[0] == ']')
-			break;
-		if (seen_char && !strncmp(pos, "..", 2)) {
-			pos++;
-			action->data = INT_TO_POINTER(CC_RANGE);
-			continue;
-		}
-		if (!seen_char)
-			action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
-		if (pos[0] == '\\') {
-			if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
-				*cc = list_push(*cc, INT_TO_POINTER(pos[1]));
-			else if (pos[1] == 'n')
-				*cc = list_push(*cc, INT_TO_POINTER('\n'));
-			else if (pos[1] == 'r')
-				*cc = list_push(*cc, INT_TO_POINTER('\r'));
-			else if (pos[1] == 't')
-				*cc = list_push(*cc, INT_TO_POINTER('\t'));
-			else
-				break;
-			pos++;
-		}
-		else {
-			*cc = list_push(*cc, INT_TO_POINTER(pos[0]));
-		}
-		seen_char = 1;
-		if (action->data == INT_TO_POINTER(CC_RANGE)) {
-			action = NULL;
-			seen_char = 0;
-		}
-	}
-	if (*pos != ']') {
-		p->error = strdupf("expected ']' at '%s'", pos);
-		return -1;
-	}
-	*fin = ++pos;
+        return 0;
+    while (1) {
+        pos++;
+        ws(pos, &pos);
+        if (!pos[0] || pos[0] == ']')
+            break;
+        if (seen_char && !strncmp(pos, "..", 2)) {
+            pos++;
+            action->data = INT_TO_POINTER(CC_RANGE);
+            continue;
+        }
+        if (!seen_char)
+            action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
+        if (pos[0] == '\\') {
+            if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
+                *cc = list_push(*cc, INT_TO_POINTER(pos[1]));
+            else if (pos[1] == 'n')
+                *cc = list_push(*cc, INT_TO_POINTER('\n'));
+            else if (pos[1] == 'r')
+                *cc = list_push(*cc, INT_TO_POINTER('\r'));
+            else if (pos[1] == 't')
+                *cc = list_push(*cc, INT_TO_POINTER('\t'));
+            else
+                break;
+            pos++;
+        }
+        else {
+            *cc = list_push(*cc, INT_TO_POINTER(pos[0]));
+        }
+        seen_char = 1;
+        if (action->data == INT_TO_POINTER(CC_RANGE)) {
+            action = NULL;
+            seen_char = 0;
+        }
+    }
+    if (*pos != ']') {
+        p->error = strdupf("expected ']' at '%s'", pos);
+        return -1;
+    }
+    *fin = ++pos;
     return 1;
 }
 
@@ -139,13 +139,13 @@ char_class (Parser *p, const char *pos, const char **fin, List **cc) {
                   xdigit | print | graph | cntrl | punct | alnum | space |
                   blank | word  */
     *cc = NULL;
-	if (!bracketed_char_class(p, pos, &pos, cc) &&
-		!named_char_class(p, pos, &pos, cc))
-		return 0;
-	if (p->error)
-		return -1;
-	*fin = pos;
-	return 1;
+    if (!bracketed_char_class(p, pos, &pos, cc) &&
+        !named_char_class(p, pos, &pos, cc))
+        return 0;
+    if (p->error)
+        return -1;
+    *fin = pos;
+    return 1;
 }
 
 static int
@@ -172,9 +172,9 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     while (1) {
         ws(pos, &pos);
         if (*pos != '+' && *pos != '-')
-			break;
+            break;
         pos++;
-		container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
+        container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
         ws(pos, &pos);
         if (!char_class(p, pos, fin, &cc))
             p->error = strdupf("expected charclass at '%s'", pos);
