@@ -61,24 +61,76 @@ ws (const char *pos, const char **fin) {
 }
 
 static int
-named_char_class (const char *pos, const char **fin, int (**func)()) {
+named_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
+	int (*func) () = NULL;
 	int retval =
-		!strncmp(pos, "alnum", 5)  && (pos += 5) && (*func = isalnum) ||
-		!strncmp(pos, "alpha", 5)  && (pos += 5) && (*func = isalpha) ||
-		!strncmp(pos, "blank", 5)  && (pos += 5) && (*func = isblank) ||
-		!strncmp(pos, "cntrl", 5)  && (pos += 5) && (*func = iscntrl) ||
-		!strncmp(pos, "digit", 5)  && (pos += 5) && (*func = isdigit) ||
-		!strncmp(pos, "graph", 5)  && (pos += 5) && (*func = isgraph) ||
-		!strncmp(pos, "lower", 5)  && (pos += 5) && (*func = islower) ||
-		!strncmp(pos, "print", 5)  && (pos += 5) && (*func = isprint) ||
-		!strncmp(pos, "punct", 5)  && (pos += 5) && (*func = ispunct) ||
-		!strncmp(pos, "space", 5)  && (pos += 5) && (*func = isspace) ||
-		!strncmp(pos, "upper", 5)  && (pos += 5) && (*func = isupper) ||
-		!strncmp(pos, "word", 4)   && (pos += 4) && (*func = isword)  ||
-		!strncmp(pos, "xdigit", 6) && (pos += 6) && (*func = isxdigit);
-	if (retval)
-		*fin = pos;
-	return retval;
+		!strncmp(pos, "alnum", 5)  && (pos += 5) && (func = isalnum) ||
+		!strncmp(pos, "alpha", 5)  && (pos += 5) && (func = isalpha) ||
+		!strncmp(pos, "blank", 5)  && (pos += 5) && (func = isblank) ||
+		!strncmp(pos, "cntrl", 5)  && (pos += 5) && (func = iscntrl) ||
+		!strncmp(pos, "digit", 5)  && (pos += 5) && (func = isdigit) ||
+		!strncmp(pos, "graph", 5)  && (pos += 5) && (func = isgraph) ||
+		!strncmp(pos, "lower", 5)  && (pos += 5) && (func = islower) ||
+		!strncmp(pos, "print", 5)  && (pos += 5) && (func = isprint) ||
+		!strncmp(pos, "punct", 5)  && (pos += 5) && (func = ispunct) ||
+		!strncmp(pos, "space", 5)  && (pos += 5) && (func = isspace) ||
+		!strncmp(pos, "upper", 5)  && (pos += 5) && (func = isupper) ||
+		!strncmp(pos, "word", 4)   && (pos += 4) && (func = isword)  ||
+		!strncmp(pos, "xdigit", 6) && (pos += 6) && (func = isxdigit);
+	if (!retval)
+		return 0;
+	*fin = pos;
+    *cc = list_push(*cc, INT_TO_POINTER(CC_FUNC));
+    *cc = list_push(*cc, func);
+	return 1;
+}
+
+static int
+bracketed_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
+    List *action = NULL;
+	int seen_char = 0;
+    if (*pos != '[')
+		return 0;
+	while (1) {
+		pos++;
+		ws(pos, &pos);
+		if (!pos[0] || pos[0] == ']')
+			break;
+		if (seen_char && !strncmp(pos, "..", 2)) {
+			pos++;
+			action->data = INT_TO_POINTER(CC_RANGE);
+			continue;
+		}
+		if (!seen_char)
+			action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
+		if (pos[0] == '\\') {
+			if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
+				*cc = list_push(*cc, INT_TO_POINTER(pos[1]));
+			else if (pos[1] == 'n')
+				*cc = list_push(*cc, INT_TO_POINTER('\n'));
+			else if (pos[1] == 'r')
+				*cc = list_push(*cc, INT_TO_POINTER('\r'));
+			else if (pos[1] == 't')
+				*cc = list_push(*cc, INT_TO_POINTER('\t'));
+			else
+				break;
+			pos++;
+		}
+		else {
+			*cc = list_push(*cc, INT_TO_POINTER(pos[0]));
+		}
+		seen_char = 1;
+		if (action->data == INT_TO_POINTER(CC_RANGE)) {
+			action = NULL;
+			seen_char = 0;
+		}
+	}
+	if (*pos != ']') {
+		p->error = strdupf("expected ']' at '%s'", pos);
+		return -1;
+	}
+	*fin = ++pos;
+    return 1;
 }
 
 static int
@@ -86,58 +138,14 @@ char_class (Parser *p, const char *pos, const char **fin, List **cc) {
     /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
                   xdigit | print | graph | cntrl | punct | alnum | space |
                   blank | word  */
-    List *action = NULL;
-    int (*func) () = NULL;
     *cc = NULL;
-    if (*pos == '[') {
-        while (1) {
-            pos++;
-            ws(pos, &pos);
-            if (!pos[0] || pos[0] == ']') {
-                break;
-            }
-            else if (action && action->data == INT_TO_POINTER(CC_CHAR) &&
-                     !strncmp(pos, "..", 2)) {
-                pos++;
-                action->data = INT_TO_POINTER(CC_RANGE);
-                continue;
-            }
-            if (!action || action->data == INT_TO_POINTER(CC_CHAR))
-                action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
-            if (pos[0] == '\\') {
-                if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
-                    *cc = list_push(*cc, INT_TO_POINTER(pos[1]));
-                else if (pos[1] == 'n')
-                    *cc = list_push(*cc, INT_TO_POINTER('\n'));
-                else if (pos[1] == 'r')
-                    *cc = list_push(*cc, INT_TO_POINTER('\r'));
-                else if (pos[1] == 't')
-                    *cc = list_push(*cc, INT_TO_POINTER('\t'));
-                else
-                    break;
-                pos++;
-            }
-            else {
-                *cc = list_push(*cc, INT_TO_POINTER(pos[0]));
-            }
-            if (action->data == INT_TO_POINTER(CC_RANGE))
-                action = NULL;
-        }
-        if (*pos != ']') {
-            p->error = strdupf("expected ']' at '%s'", pos);
-            return -1;
-        }
-        pos++;
-    }
-    else if (named_char_class(pos, &pos, &func)) {
-        *cc = list_push(*cc, INT_TO_POINTER(CC_FUNC));
-        *cc = list_push(*cc, func);
-    }
-    else {
-        return 0;
-    }
-    *fin = pos;
-    return 1;
+	if (!bracketed_char_class(p, pos, &pos, cc) &&
+		!named_char_class(p, pos, &pos, cc))
+		return 0;
+	if (p->error)
+		return -1;
+	*fin = pos;
+	return 1;
 }
 
 static int
