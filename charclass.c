@@ -26,39 +26,23 @@ The above, once parsed, will be a flat array like this:
      CC_INCLUDES, CC_FUNC, ispunct]
 */
 
-void
-char_class_free (List *cc) {
-    list_free(cc, NULL);
+CharClass *
+char_class_new (const char *str, int length) {
+    CharClass *cc = calloc(1, sizeof (CharClass));
+    cc->str = str;
+    cc->length = length;
+    return cc;
 }
 
 void
-char_class_print (List *cc) {
-    List *elem;
-    for (elem = cc; elem; elem = elem->next) {
-        if (elem->data == INT_TO_POINTER(CC_EXCLUDES)) {
-            printf("excludes\n");
-        }
-        else if (elem->data == INT_TO_POINTER(CC_INCLUDES)) {
-            printf("includes\n");
-        }
-        else if (elem->data == INT_TO_POINTER(CC_CHAR)) {
-            elem = elem->next;
-            printf("char %c\n", POINTER_TO_INT(elem->data));
-        }
-        else if (elem->data == INT_TO_POINTER(CC_RANGE)) {
-            elem = elem->next;
-            printf("range %c", POINTER_TO_INT(elem->data));
-            elem = elem->next;
-            printf(" -> %c\n", POINTER_TO_INT(elem->data));
-        }
-        else if (elem->data == INT_TO_POINTER(CC_FUNC)) {
-            elem = elem->next;
-            printf("func %p\n", elem->data);
-        }
-        else {
-            printf("unknown %p\n", elem->data);
-        }
-    }
-    printf("---\n");
+char_class_free (CharClass *cc) {
+    if (cc)
+        list_free(cc->actions, NULL);
+    free(cc);
+}
+
+void
+char_class_print (CharClass *cc) {
+    printf("%.*s\n", cc->length, cc->str);
 }
 

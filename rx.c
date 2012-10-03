@@ -75,6 +75,9 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
         printf("\"%p\" -> \"%p\"", state, t->to);
         if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
             printf(" [label=\"%c\"]", t->c);
+        if (t->type & CHARCLASS)
+            printf(" [label=\"%s%.*s\"]",
+                t->cc->length == 2 ? "\\" : "", t->cc->length, t->cc->str);
         if (t->back)
             printf(" [color=blue,style=dotted,label=\"back to %p\"]", t->back);
         printf("\n");

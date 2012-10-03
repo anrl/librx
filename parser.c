@@ -154,6 +154,7 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     Transition *t;
     List *cc;
     int container = CC_INCLUDES;
+    const char *start = pos;
     if (*pos == '+' || *pos == '-') {
         container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
         pos++;
@@ -166,8 +167,9 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     pos = *fin;
     t = transition_new(p->rx->end, state_new(p->rx));
     t->type = EAT | CHARCLASS;
-    t->cc = list_push(t->cc, INT_TO_POINTER(container));
-    t->cc = list_cat(t->cc, cc);
+    t->cc = char_class_new(start - 1, 0);
+    t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(container));
+    t->cc->actions = list_cat(t->cc->actions, cc);
     p->rx->end = t->to;
     while (1) {
         ws(pos, &pos);
@@ -181,10 +183,11 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
         if (p->error)
             return -1;
         pos = *fin;
-        t->cc = list_cat(cc, t->cc);
-        t->cc = list_unshift(t->cc, INT_TO_POINTER(container));
+        t->cc->actions = list_cat(cc, t->cc->actions);
+        t->cc->actions = list_unshift(t->cc->actions, INT_TO_POINTER(container));
     }
     ws(pos, &pos);
+    t->cc->length = pos - start + 2;
     *fin = pos;
     return 1;
 }
@@ -273,11 +276,13 @@ escape (Parser *p, const char *pos, const char **fin) {
     if (charclass) {
         c = tolower(*pos);
         t->type = EAT | CHARCLASS;
-        t->cc = list_push(t->cc, INT_TO_POINTER(isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
-        t->cc = list_push(t->cc, INT_TO_POINTER(CC_FUNC));
-        t->cc = list_push(t->cc, c == 's' ? isspace
-                               : c == 'w' ? isword
-                               : c == 'd' ? isdigit : NULL);
+        t->cc = char_class_new(pos - 1, 2);
+        t->cc->actions = list_push(t->cc->actions,
+            INT_TO_POINTER(isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
+        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(CC_FUNC));
+        t->cc->actions = list_push(t->cc->actions, c == 's' ? isspace
+                                                 : c == 'w' ? isword
+                                                 : c == 'd' ? isdigit : NULL);
     }
     else {
         t->c = c;

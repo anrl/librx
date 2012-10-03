@@ -28,6 +28,21 @@ List *list_find      (List *list, void *data, int (*cmpfunc) ());
 List *list_remove    (List *list, void *data, int (*cmpfunc) (),
                       void (*freefunc) ());
 
+/* charclass  */
+typedef enum {
+    CC_EXCLUDES, CC_INCLUDES, CC_CHAR, CC_RANGE, CC_FUNC
+} CharClassAction;
+
+typedef struct {
+    const char *str;
+    int length;
+    List *actions;
+} CharClass;
+
+CharClass *char_class_new   (const char *str, int length);
+void       char_class_free  (CharClass *cc);
+void       char_class_print (CharClass *cc);
+
 /* state  */
 typedef struct {
     Rx   *group;
@@ -49,7 +64,7 @@ typedef struct {
     State *to;
     State *back;
     char c;
-    List *cc;
+    CharClass *cc;
 } Transition;
 
 State      *state_new      (Rx *rx);
@@ -67,14 +82,6 @@ int lwb    (const char *str, const char *pos);
 int rwb    (const char *str, const char *pos);
 int wb     (const char *str, const char *pos);
 int nwb    (const char *str, const char *pos);
-
-/* charclass  */
-typedef enum {
-    CC_EXCLUDES, CC_INCLUDES, CC_CHAR, CC_RANGE, CC_FUNC
-} CharClassAction;
-
-void char_class_free  (List *cc);
-void char_class_print (List *cc);
 
 /* parser  */
 int rx_parse (Rx *rx);
