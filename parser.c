@@ -96,31 +96,31 @@ char_class (Parser *p, const char *pos, const char **fin, List **cc) {
             if (!pos[0] || pos[0] == ']') {
                 break;
             }
-            else if (action && action->data == (void *) CC_CHAR &&
+            else if (action && action->data == INT_TO_POINTER(CC_CHAR) &&
                      !strncmp(pos, "..", 2)) {
                 pos++;
-                action->data = (void *) CC_RANGE;
+                action->data = INT_TO_POINTER(CC_RANGE);
                 continue;
             }
-            if (!action || action->data == (void *) CC_CHAR)
-                action = *cc = list_push(*cc, (void *) CC_CHAR);
+            if (!action || action->data == INT_TO_POINTER(CC_CHAR))
+                action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
             if (pos[0] == '\\') {
                 if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
-                    *cc = list_push(*cc, (void *) pos[1]);
+                    *cc = list_push(*cc, INT_TO_POINTER(pos[1]));
                 else if (pos[1] == 'n')
-                    *cc = list_push(*cc, (void *) '\n');
+                    *cc = list_push(*cc, INT_TO_POINTER('\n'));
                 else if (pos[1] == 'r')
-                    *cc = list_push(*cc, (void *) '\r');
+                    *cc = list_push(*cc, INT_TO_POINTER('\r'));
                 else if (pos[1] == 't')
-                    *cc = list_push(*cc, (void *) '\t');
+                    *cc = list_push(*cc, INT_TO_POINTER('\t'));
                 else
                     break;
                 pos++;
             }
             else {
-                *cc = list_push(*cc, (void *) pos[0]);
+                *cc = list_push(*cc, INT_TO_POINTER(pos[0]));
             }
-            if (action->data == (void *) CC_RANGE)
+            if (action->data == INT_TO_POINTER(CC_RANGE))
                 action = NULL;
         }
         if (*pos != ']') {
@@ -130,7 +130,7 @@ char_class (Parser *p, const char *pos, const char **fin, List **cc) {
         pos++;
     }
     else if (named_char_class(pos, &pos, &func)) {
-        *cc = list_push(*cc, (void *) CC_FUNC);
+        *cc = list_push(*cc, INT_TO_POINTER(CC_FUNC));
         *cc = list_push(*cc, func);
     }
     else {
@@ -145,9 +145,9 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     /* char_class_combo: <[+-]>? <char_class> (<[+-]> <char_class>)*  */
     Transition *t;
     List *cc;
-    int excludes = 0;
+    int container = CC_INCLUDES;
     if (*pos == '+' || *pos == '-') {
-        excludes = *pos == '-';
+        container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
         pos++;
         ws(pos, &pos);
     }
@@ -158,16 +158,15 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     pos = *fin;
     t = transition_new(p->rx->end, state_new(p->rx));
     t->type = EAT | CHARCLASS;
-    t->cc = list_push(t->cc, (void *) (excludes ? CC_EXCLUDES : CC_INCLUDES));
+    t->cc = list_push(t->cc, INT_TO_POINTER(container));
     t->cc = list_cat(t->cc, cc);
     p->rx->end = t->to;
     while (1) {
         ws(pos, &pos);
-        if (*pos == '+' || *pos == '-')
-            excludes = *pos == '-';
-        else
-            break;
+        if (*pos != '+' && *pos != '-')
+			break;
         pos++;
+		container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
         ws(pos, &pos);
         if (!char_class(p, pos, fin, &cc))
             p->error = strdupf("expected charclass at '%s'", pos);
@@ -175,7 +174,7 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
             return -1;
         pos = *fin;
         t->cc = list_cat(cc, t->cc);
-        t->cc = list_unshift(t->cc, (void *) (excludes ? CC_EXCLUDES : CC_INCLUDES));
+        t->cc = list_unshift(t->cc, INT_TO_POINTER(container));
     }
     ws(pos, &pos);
     *fin = pos;
@@ -266,8 +265,8 @@ escape (Parser *p, const char *pos, const char **fin) {
     if (charclass) {
         c = tolower(*pos);
         t->type = EAT | CHARCLASS;
-        t->cc = list_push(t->cc, (void *) (isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
-        t->cc = list_push(t->cc, (void *) CC_FUNC);
+        t->cc = list_push(t->cc, INT_TO_POINTER(isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
+        t->cc = list_push(t->cc, INT_TO_POINTER(CC_FUNC));
         t->cc = list_push(t->cc, c == 's' ? isspace
                                : c == 'w' ? isword
                                : c == 'd' ? isdigit : NULL);

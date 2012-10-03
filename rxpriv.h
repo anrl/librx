@@ -4,6 +4,8 @@
 #include "rx.h"
 
 /* handy  */
+#define INT_TO_POINTER(i) ((void *)(long)(i))
+#define POINTER_TO_INT(p) ((int)(long)(p))
 char *strdupf (const char *fmt, ...);
 
 /* list  */

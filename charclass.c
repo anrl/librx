@@ -35,23 +35,23 @@ void
 char_class_print (List *cc) {
     List *elem;
     for (elem = cc; elem; elem = elem->next) {
-        if (elem->data == (void *) CC_EXCLUDES) {
+        if (elem->data == INT_TO_POINTER(CC_EXCLUDES)) {
             printf("excludes\n");
         }
-        else if (elem->data == (void *) CC_INCLUDES) {
+        else if (elem->data == INT_TO_POINTER(CC_INCLUDES)) {
             printf("includes\n");
         }
-        else if (elem->data == (void *) CC_CHAR) {
+        else if (elem->data == INT_TO_POINTER(CC_CHAR)) {
             elem = elem->next;
-            printf("char %c\n", (char) elem->data);
+            printf("char %c\n", POINTER_TO_INT(elem->data));
         }
-        else if (elem->data == (void *) CC_RANGE) {
+        else if (elem->data == INT_TO_POINTER(CC_RANGE)) {
             elem = elem->next;
-            printf("range %c", (char) elem->data);
+            printf("range %c", POINTER_TO_INT(elem->data));
             elem = elem->next;
-            printf(" -> %c\n", (char) elem->data);
+            printf(" -> %c\n", POINTER_TO_INT(elem->data));
         }
-        else if (elem->data == (void *) CC_FUNC) {
+        else if (elem->data == INT_TO_POINTER(CC_FUNC)) {
             elem = elem->next;
             printf("func %p\n", elem->data);
         }

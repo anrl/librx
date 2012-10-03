@@ -1,4 +1,4 @@
-CFLAGS = -g -O0 -Wall -Wno-parentheses -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast
+CFLAGS = -g -O0 -Wall -Wno-parentheses
 
 %.a:
 	$(AR) rcs $@ $(filter %.o, $^)
