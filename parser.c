@@ -232,6 +232,10 @@ group (Parser *p, const char *pos, const char **fin) {
         default: return 0;
     }
     p->rx = rx_extend(orig);
+    if (ldelimeter == '(')
+        orig->captures = list_push(orig->captures, p->rx);
+    else
+        orig->clusters = list_push(orig->clusters, p->rx);
     t = transition_new(orig->end, p->rx->start);
     t->back = state_new(orig);
     disjunction(p, pos, fin);
