@@ -86,41 +86,62 @@ named_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
 }
 
 static int
+escaped_char_class (Parser *p, const char *pos, const char **fin,
+                   int *type, void **value) {
+    /* escaped_char_class: '\' <-[a..zA..Z0..9_-] +[nNrRtTsSwWdD]>  */
+    char c, l;
+    if (*pos++ != '\\')
+        return 0;
+    c = *pos++;
+    l = tolower(c);
+    if (!isalnum(c) && c != '_' && c != '-') {
+        *type = CC_CHAR;
+        *value = INT_TO_POINTER(c);
+    }
+    else if (l == 'n' || l == 'r' || l == 't') {
+        *type = c == l ? CC_CHAR : CC_NCHAR;
+        *value = INT_TO_POINTER(l == 'n' ? '\n' : l == 'r' ? '\r' : '\t');
+    }
+    else if (l == 's' || l == 'w' || l == 'd') {
+        *type = c == l ? CC_FUNC : CC_NFUNC;
+        *value = l == 's' ? isspace : l == 'w' ? isword : isdigit;
+    }
+    else {
+        return 0;
+    }
+    *fin = pos;
+    return 1;
+}
+
+static int
 bracketed_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
     List *action = NULL;
     int seen_char = 0;
-    if (*pos != '[')
+    int type;
+    void *value;
+    if (*pos++ != '[')
         return 0;
     while (1) {
-        pos++;
         ws(pos, &pos);
         if (!pos[0] || pos[0] == ']')
             break;
         if (seen_char && !strncmp(pos, "..", 2)) {
-            pos++;
+            pos += 2;
             action->data = INT_TO_POINTER(CC_RANGE);
             continue;
         }
         if (!seen_char)
             action = *cc = list_push(*cc, INT_TO_POINTER(CC_CHAR));
-        if (pos[0] == '\\') {
-            if (pos[1] == '[' || pos[1] == ']' || pos[1] == ' ' || pos[1] == '\\')
-                *cc = list_push(*cc, INT_TO_POINTER(pos[1]));
-            else if (pos[1] == 'n')
-                *cc = list_push(*cc, INT_TO_POINTER('\n'));
-            else if (pos[1] == 'r')
-                *cc = list_push(*cc, INT_TO_POINTER('\r'));
-            else if (pos[1] == 't')
-                *cc = list_push(*cc, INT_TO_POINTER('\t'));
-            else
-                break;
-            pos++;
+        if (escaped_char_class(p, pos, &pos, &type, &value)) {
+            action->data = INT_TO_POINTER(type);
+            *cc = list_push(*cc, value);
         }
         else {
             *cc = list_push(*cc, INT_TO_POINTER(pos[0]));
+            pos++;
         }
         seen_char = 1;
-        if (action->data == INT_TO_POINTER(CC_RANGE)) {
+        if (action->data != INT_TO_POINTER(CC_CHAR)) {
             action = NULL;
             seen_char = 0;
         }
@@ -254,46 +275,24 @@ group (Parser *p, const char *pos, const char **fin) {
 
 static int
 escape (Parser *p, const char *pos, const char **fin) {
-    /* escape: '\' <-[a..zA..Z0..9_-] +[nNrRtTsSwWdD]>  */
-    char c;
+    int type;
+    void *value;
     Transition *t;
-    int charclass = 0;
-    if (*pos++ != '\\')
-        return 0;
-    if (!(isalnum(*pos) || *pos == '_' || *pos == '-'))
-        c = *pos;
-    else if (tolower(*pos) == 'n')
-        c = '\n';
-    else if (tolower(*pos) == 'r')
-        c = '\r';
-    else if (tolower(*pos) == 't')
-        c = '\t';
-    else if (tolower(*pos) == 's')
-        charclass = 1;
-    else if (tolower(*pos) == 'w')
-        charclass = 1;
-    else if (tolower(*pos) == 'd')
-        charclass = 1;
-    else
+    if (!escaped_char_class(p, pos, fin, &type, &value))
         return 0;
     t = transition_new(p->rx->end, state_new(p->rx));
-    if (charclass) {
-        c = tolower(*pos);
+    p->rx->end = t->to;
+    if (type == CC_FUNC || type == CC_NFUNC) {
         t->type = EAT | CHARCLASS;
-        t->cc = char_class_new(pos - 1, 2);
-        t->cc->actions = list_push(t->cc->actions,
-            INT_TO_POINTER(isupper(*pos) ? CC_EXCLUDES : CC_INCLUDES));
-        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(CC_FUNC));
-        t->cc->actions = list_push(t->cc->actions, c == 's' ? isspace
-                                                 : c == 'w' ? isword
-                                                 : c == 'd' ? isdigit : NULL);
+        t->cc = char_class_new(pos - 2, 2);
+        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(CC_INCLUDES));
+        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(type));
+        t->cc->actions = list_push(t->cc->actions, value);
     }
     else {
-        t->c = c;
-        t->type = isupper(*pos) ? EAT | NEGCHAR : EAT | CHAR;
+        t->type = type == CC_CHAR ? EAT | CHAR : EAT | NEGCHAR;
+        t->c = POINTER_TO_INT(value);
     }
-    p->rx->end = t->to;
-    *fin = ++pos;
     return 1;
 }
 

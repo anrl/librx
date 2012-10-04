@@ -30,7 +30,7 @@ List *list_remove    (List *list, void *data, int (*cmpfunc) (),
 
 /* charclass  */
 typedef enum {
-    CC_EXCLUDES, CC_INCLUDES, CC_CHAR, CC_RANGE, CC_FUNC
+    CC_EXCLUDES, CC_INCLUDES, CC_CHAR, CC_NCHAR, CC_RANGE, CC_FUNC, CC_NFUNC
 } CharClassAction;
 
 typedef struct {
