@@ -14,7 +14,7 @@ static int disjunction ();
 
 static int
 integer (Parser *p, const char *pos, const char **fin) {
-    /* integer: ('+' | '-')? \d+  */
+    /* integer: [+-]? \d+  */
     if (*pos == '-' || *pos == '+')
         pos++;
     if (!isdigit(*pos))
@@ -62,6 +62,9 @@ ws (const char *pos, const char **fin) {
 
 static int
 named_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
+    /* named_char_class: alnum | alpha | blank | cntrl | digit | graph |
+                         lower | print | punct | space | upper | word |
+                         xdigit  */
     int (*func) () = NULL;
     int retval =
         !strncmp(pos, "alnum", 5)  && (pos += 5) && (func = isalnum) ||
@@ -115,6 +118,7 @@ escaped_char_class (Parser *p, const char *pos, const char **fin,
 
 static int
 bracketed_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
+    /* bracketed_char_class: '[' (<escaped_char_class> | <-[\]]>)* ']'  */
     List *action = NULL;
     int seen_char = 0;
     int type;
@@ -156,9 +160,7 @@ bracketed_char_class (Parser *p, const char *pos, const char **fin, List **cc) {
 
 static int
 char_class (Parser *p, const char *pos, const char **fin, List **cc) {
-    /* charclass: '[' ('\]' | <-[\]]>)* ']' | upper | lower | alpha | digit |
-                  xdigit | print | graph | cntrl | punct | alnum | space |
-                  blank | word  */
+    /* char_class: <bracketed_char_class> | <named_char_class>  */
     *cc = NULL;
     if (!bracketed_char_class(p, pos, &pos, cc) &&
         !named_char_class(p, pos, &pos, cc))
