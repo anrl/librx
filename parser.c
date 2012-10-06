@@ -341,9 +341,9 @@ character (Parser *p, const char *pos, const char **fin) {
 }
 
 static int
-quantifier (Parser *p, const char *pos, const char **fin, State *start) {
-    /* quantifier: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
-    int i, min = 1, max = 1;
+quantifier_vars (Parser *p, const char *pos, const char **fin, int *min, int *max) {
+    /* quantifier_vars: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
+    *min = *max = 1;
     if (!strncmp(pos, "**", 2)) {
         pos += 2;
         ws(pos, &pos);
@@ -351,8 +351,8 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
             p->error = strdupf("expected integer at '%s'", pos);
             return -1;
         }
-        min = max = atoi(pos);
-        if (min < 0) {
+        *min = *max = atoi(pos);
+        if (*min < 0) {
             p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
@@ -363,15 +363,15 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
             pos += 2;
             ws(pos, &pos);
             if (integer(p, pos, fin)) {
-                max = atoi(pos);
-                if (max <= min) {
+                *max = atoi(pos);
+                if (*max <= *min) {
                     p->error = strdupf("can't do ** n..m with m <= n at '%s'", pos);
                     return -1;
                 }
                 pos = *fin;
             }
             else if (*pos == '*') {
-                max = 0;
+                *max = 0;
                 pos++;
             }
             else {
@@ -381,27 +381,36 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
         }
     }
     else if (*pos == '*') {
-        min = 0;
-        max = 0;
+        *min = 0;
+        *max = 0;
         pos++;
     }
     else if (*pos == '+') {
-        min = 1;
-        max = 0;
+        *min = 1;
+        *max = 0;
         pos++;
     }
     else if (*pos == '?') {
-        min = 0;
-        max = 1;
+        *min = 0;
+        *max = 1;
         pos++;
     }
     else {
         return 0;
     }
     *fin = pos;
-    if (min == 1 && max == 1) {
-    }
-    else if (min == 0 && max == 0) {
+    return 1;
+}
+
+static int
+quantifier (Parser *p, const char *pos, const char **fin, State *start) {
+    /* quantifier: <quantifier_vars>  */
+    int i, min, max;
+    if (!quantifier_vars(p, pos, fin, &min, &max))
+        return 0;
+    if (p->error)
+        return -1;
+    if (min == 0 && max == 0) {
         transition_new(p->rx->end, start);
         p->rx->end = start;
     }
