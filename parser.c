@@ -33,7 +33,7 @@ captureref (Parser *p, const char *pos, const char **fin) {
     if (*pos++ != '~')
         return 0;
     t = transition_new(p->rx->end, NULL);
-    p->rx->end = t->back = state_new(p->rx);
+    p->rx->end = t->ret = state_new(p->rx);
     if (integer(p, pos, fin)) {
         int capture = atoi(pos);
         if (capture < 0) {
@@ -260,12 +260,12 @@ group (Parser *p, const char *pos, const char **fin) {
     else
         orig->clusters = list_push(orig->clusters, p->rx);
     t = transition_new(orig->end, p->rx->start);
-    t->back = state_new(orig);
+    t->ret = state_new(orig);
     disjunction(p, pos, fin);
     if (p->error)
         return -1;
     p->rx = orig;
-    p->rx->end = t->back;
+    p->rx->end = t->ret;
     pos = *fin;
     if (*pos != rdelimeter) {
         p->error = strdupf("expected '%c' at '%s'", rdelimeter, pos);
@@ -425,21 +425,21 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
         p->rx->end = start;
         for (i = 0; i < min; i++) {
             Transition *t = transition_new(p->rx->end, atom);
-            t->back = p->rx->end = state_new(p->rx);
+            t->ret = p->rx->end = state_new(p->rx);
         }
         if (max > min) {
             State *end = state_new(p->rx);
             transition_new(p->rx->end, end);
             for (i = 0; i < max - min; i++) {
                 Transition *t = transition_new(p->rx->end, atom);
-                t->back = p->rx->end = state_new(p->rx);
+                t->ret = p->rx->end = state_new(p->rx);
                 transition_new(p->rx->end, end);
             }
             p->rx->end = end;
         }
         if (!max) {
             Transition *t = transition_new(p->rx->end, atom);
-            t->back = p->rx->end;
+            t->ret = p->rx->end;
         }
     }
     return 1;

@@ -62,7 +62,7 @@ typedef enum {
 typedef struct {
     TransitionType type;
     State *to;
-    State *back;
+    State *ret;
     char c;
     CharClass *cc;
 } Transition;

@@ -78,11 +78,11 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
         if (t->type & CHARCLASS)
             printf(" [label=\"%s%.*s\"]",
                 t->cc->length == 2 ? "\\" : "", t->cc->length, t->cc->str);
-        if (t->back)
-            printf(" [color=blue,style=dotted,label=\"back to %p\"]", t->back);
+        if (t->ret)
+            printf(" [color=blue,style=dotted,label=\"return to %p\"]", t->ret);
         printf("\n");
         rx_print_state(rx, t->to, visited, n);
-        rx_print_state(rx, t->back, visited, n);
+        rx_print_state(rx, t->ret, visited, n);
     }
 }
 
