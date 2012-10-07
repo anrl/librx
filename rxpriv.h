@@ -47,6 +47,7 @@ void       char_class_print (CharClass *cc);
 typedef struct {
     Rx   *group;
     List *transitions;
+    List *backtransitions;
     int (*assertfunc) (const char *str, const char *pos);
 } State;
 
