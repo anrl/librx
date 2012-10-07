@@ -32,8 +32,8 @@ captureref (Parser *p, const char *pos, const char **fin) {
         return 0;
     if (*pos++ != '~')
         return 0;
-    t = transition_new(p->rx->end, NULL);
-    p->rx->end = t->ret = state_new(p->rx);
+    t = transition_new(p->rx->end, NULL, state_new(p->rx), 0, NULL);
+    p->rx->end = t->ret;
     if (integer(p, pos, fin)) {
         int capture = atoi(pos);
         if (capture < 0) {
@@ -189,11 +189,10 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     if (p->error)
         return -1;
     pos = *fin;
-    t = transition_new(p->rx->end, state_new(p->rx));
-    t->type = EAT | CHARCLASS;
-    cc = t->param = char_class_new(p->rx, start - 1, 0);
+    cc = char_class_new(p->rx, start - 1, 0);
     cc->actions = list_push(cc->actions, INT_TO_POINTER(container));
     cc->actions = list_cat(cc->actions, actions);
+    t = transition_new(p->rx->end, state_new(p->rx), NULL, EAT | CHARCLASS, cc);
     p->rx->end = t->to;
     while (1) {
         ws(pos, &pos);
@@ -260,11 +259,10 @@ group (Parser *p, const char *pos, const char **fin) {
         orig->captures = list_push(orig->captures, p->rx);
     else
         orig->clusters = list_push(orig->clusters, p->rx);
-    t = transition_new(orig->end, p->rx->start);
-    t->ret = state_new(orig);
     disjunction(p, pos, fin);
     if (p->error)
         return -1;
+    t = transition_new(orig->end, p->rx->start, state_new(orig), 0, NULL);
     p->rx = orig;
     p->rx->end = t->ret;
     pos = *fin;
@@ -283,7 +281,7 @@ escape (Parser *p, const char *pos, const char **fin) {
     Transition *t;
     if (!escaped_char_class(p, pos, fin, &type, &value))
         return 0;
-    t = transition_new(p->rx->end, state_new(p->rx));
+    t = transition_new(p->rx->end, state_new(p->rx), NULL, 0, NULL);
     p->rx->end = t->to;
     if (type == CC_FUNC || type == CC_NFUNC) {
         CharClass *cc;
@@ -311,9 +309,8 @@ quote (Parser *p, const char *pos, const char **fin) {
             pos = *fin;
         }
         else if (*pos && *pos != delimeter) {
-            Transition *t = transition_new(p->rx->end, state_new(p->rx));
-            t->type = EAT | CHAR;
-            t->param = INT_TO_POINTER(*pos);
+            Transition *t = transition_new(p->rx->end, state_new(p->rx), NULL,
+                                           EAT | CHAR, INT_TO_POINTER(*pos));
             p->rx->end = t->to;
             pos++;
         }
@@ -335,9 +332,9 @@ character (Parser *p, const char *pos, const char **fin) {
     Transition *t;
     if (!(isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.'))
         return 0;
-    t = transition_new(p->rx->end, state_new(p->rx));
+    t = transition_new(p->rx->end, state_new(p->rx), NULL, 0,
+                       INT_TO_POINTER(*pos));
     t->type = *pos == '.' ? EAT | ANYCHAR : EAT | CHAR;
-    t->param = INT_TO_POINTER(*pos);
     p->rx->end = t->to;
     *fin = ++pos;
     return 1;
@@ -414,35 +411,36 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
     if (p->error)
         return -1;
     if (min == 0 && max == 0) {
-        transition_new(p->rx->end, start);
+        transition_new(p->rx->end, start, NULL, 0, NULL);
         p->rx->end = start;
     }
     else if (min == 1 && max == 0) {
-        transition_new(p->rx->end, start);
+        transition_new(p->rx->end, start, NULL, 0, NULL);
     }
     else if (min == 0 && max == 1) {
-        transition_new(start, p->rx->end);
+        transition_new(start, p->rx->end, NULL, 0, NULL);
     }
     else {
         State *atom = state_split(start);
         p->rx->end = start;
         for (i = 0; i < min; i++) {
-            Transition *t = transition_new(p->rx->end, atom);
-            t->ret = p->rx->end = state_new(p->rx);
+            Transition *t = transition_new(
+                p->rx->end, atom, state_new(p->rx), 0, NULL);
+            p->rx->end = t->ret;
         }
         if (max > min) {
             State *end = state_new(p->rx);
-            transition_new(p->rx->end, end);
+            transition_new(p->rx->end, end, NULL, 0, NULL);
             for (i = 0; i < max - min; i++) {
-                Transition *t = transition_new(p->rx->end, atom);
-                t->ret = p->rx->end = state_new(p->rx);
-                transition_new(p->rx->end, end);
+                Transition *t = transition_new(
+                    p->rx->end, atom, state_new(p->rx), 0, NULL);
+                transition_new(t->ret, end, NULL, 0, NULL);
+                p->rx->end = t->ret;
             }
             p->rx->end = end;
         }
         if (!max) {
-            Transition *t = transition_new(p->rx->end, atom);
-            t->ret = p->rx->end;
+            transition_new(p->rx->end, atom, p->rx->end, 0, NULL);
         }
     }
     return 1;
@@ -542,7 +540,7 @@ disjunction (Parser *p, const char *pos, const char **fin) {
         conjunction(p, pos, &pos);
         if (p->error)
             return -1;
-        transition_new(p->rx->end, end);
+        transition_new(p->rx->end, end, NULL, 0, NULL);
         p->rx->end = start;
         ws(pos, &pos);
         if (*pos == '|')

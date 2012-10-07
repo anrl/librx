@@ -3,9 +3,12 @@
 #include "rxpriv.h"
 
 Transition *
-transition_new (State *from, State *to) {
+transition_new (State *from, State *to, State *ret, TransitionType type, void *param) {
     Transition *t = calloc(1, sizeof (Transition));
     t->to = to;
+    t->ret = ret;
+    t->type = type;
+    t->param = param;
     from->transitions = list_push(from->transitions, t);
     return t;
 }
