@@ -41,7 +41,7 @@ captureref (Parser *p, const char *pos, const char **fin) {
             return -1;
         }
         t->type = CAPTURE;
-        t->c = capture;
+        t->param = INT_TO_POINTER(capture);
         pos = *fin;
     }
     else {
@@ -175,7 +175,8 @@ static int
 char_class_combo (Parser *p, const char *pos, const char **fin) {
     /* char_class_combo: <[+-]>? <char_class> (<[+-]> <char_class>)*  */
     Transition *t;
-    List *cc;
+    List *actions;
+    CharClass *cc;
     int container = CC_INCLUDES;
     const char *start = pos;
     if (*pos == '+' || *pos == '-') {
@@ -183,16 +184,16 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
         pos++;
         ws(pos, &pos);
     }
-    if (!char_class(p, pos, fin, &cc))
+    if (!char_class(p, pos, fin, &actions))
         return 0;
     if (p->error)
         return -1;
     pos = *fin;
     t = transition_new(p->rx->end, state_new(p->rx));
     t->type = EAT | CHARCLASS;
-    t->cc = char_class_new(start - 1, 0);
-    t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(container));
-    t->cc->actions = list_cat(t->cc->actions, cc);
+    cc = t->param = char_class_new(p->rx, start - 1, 0);
+    cc->actions = list_push(cc->actions, INT_TO_POINTER(container));
+    cc->actions = list_cat(cc->actions, actions);
     p->rx->end = t->to;
     while (1) {
         ws(pos, &pos);
@@ -201,16 +202,16 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
         pos++;
         container = *pos == '-' ? CC_EXCLUDES : CC_INCLUDES;
         ws(pos, &pos);
-        if (!char_class(p, pos, fin, &cc))
+        if (!char_class(p, pos, fin, &actions))
             p->error = strdupf("expected charclass at '%s'", pos);
         if (p->error)
             return -1;
         pos = *fin;
-        t->cc->actions = list_cat(cc, t->cc->actions);
-        t->cc->actions = list_unshift(t->cc->actions, INT_TO_POINTER(container));
+        cc->actions = list_cat(actions, cc->actions);
+        cc->actions = list_unshift(cc->actions, INT_TO_POINTER(container));
     }
     ws(pos, &pos);
-    t->cc->length = pos - start + 2;
+    cc->length = pos - start + 2;
     *fin = pos;
     return 1;
 }
@@ -285,15 +286,16 @@ escape (Parser *p, const char *pos, const char **fin) {
     t = transition_new(p->rx->end, state_new(p->rx));
     p->rx->end = t->to;
     if (type == CC_FUNC || type == CC_NFUNC) {
+        CharClass *cc;
         t->type = EAT | CHARCLASS;
-        t->cc = char_class_new(pos - 2, 2);
-        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(CC_INCLUDES));
-        t->cc->actions = list_push(t->cc->actions, INT_TO_POINTER(type));
-        t->cc->actions = list_push(t->cc->actions, value);
+        cc = t->param = char_class_new(p->rx, pos - 2, 2);
+        cc->actions = list_push(cc->actions, INT_TO_POINTER(CC_INCLUDES));
+        cc->actions = list_push(cc->actions, INT_TO_POINTER(type));
+        cc->actions = list_push(cc->actions, value);
     }
     else {
         t->type = type == CC_CHAR ? EAT | CHAR : EAT | NEGCHAR;
-        t->c = POINTER_TO_INT(value);
+        t->param = value;
     }
     return 1;
 }
@@ -311,12 +313,13 @@ quote (Parser *p, const char *pos, const char **fin) {
         else if (*pos && *pos != delimeter) {
             Transition *t = transition_new(p->rx->end, state_new(p->rx));
             t->type = EAT | CHAR;
-            t->c = *pos;
+            t->param = INT_TO_POINTER(*pos);
             p->rx->end = t->to;
             pos++;
         }
-        else
+        else {
             break;
+        }
     }
     if (*pos != delimeter) {
         p->error = strdupf("expected %c at '%s'", delimeter, pos);
@@ -334,7 +337,7 @@ character (Parser *p, const char *pos, const char **fin) {
         return 0;
     t = transition_new(p->rx->end, state_new(p->rx));
     t->type = *pos == '.' ? EAT | ANYCHAR : EAT | CHAR;
-    t->c = *pos;
+    t->param = INT_TO_POINTER(*pos);
     p->rx->end = t->to;
     *fin = ++pos;
     return 1;

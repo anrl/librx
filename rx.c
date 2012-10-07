@@ -24,6 +24,7 @@ rx_free (Rx *rx) {
     list_free(rx->clusters, rx_free);
     list_free(rx->subrules, rx_free);
     list_free(rx->extends, NULL);
+    list_free(rx->charclasses, char_class_free);
     free(rx);
 }
 
@@ -73,11 +74,13 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
     for (elem = state->transitions; elem; elem = elem->next) {
         Transition *t = elem->data;
         printf("\"%p\" -> \"%p\"", state, t->to);
-        if (t->type & (CHAR | ANYCHAR) && isgraph(t->c))
-            printf(" [label=\"%c\"]", t->c);
-        if (t->type & CHARCLASS)
+        if (t->type & (CHAR | ANYCHAR) && isgraph(POINTER_TO_INT(t->param)))
+            printf(" [label=\"%c\"]", POINTER_TO_INT(t->param));
+        if (t->type & CHARCLASS) {
+            CharClass *cc = t->param;
             printf(" [label=\"%s%.*s\"]",
-                t->cc->length == 2 ? "\\" : "", t->cc->length, t->cc->str);
+                cc->length == 2 ? "\\" : "", cc->length, cc->str);
+        }
         if (t->ret)
             printf(" [color=blue,style=dotted,label=\"return to %p\"]", t->ret);
         printf("\n");

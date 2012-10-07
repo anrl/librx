@@ -27,10 +27,11 @@ The above, once parsed, will be a flat array like this:
 */
 
 CharClass *
-char_class_new (const char *str, int length) {
+char_class_new (Rx *rx, const char *str, int length) {
     CharClass *cc = calloc(1, sizeof (CharClass));
     cc->str = str;
     cc->length = length;
+    rx->charclasses = list_push(rx->charclasses, cc);
     return cc;
 }
 

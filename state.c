@@ -12,7 +12,6 @@ transition_new (State *from, State *to) {
 
 void
 transition_free (Transition *t) {
-    char_class_free(t->cc);
     free(t);
 }
 

@@ -39,7 +39,7 @@ typedef struct {
     List *actions;
 } CharClass;
 
-CharClass *char_class_new   (const char *str, int length);
+CharClass *char_class_new   (Rx *rx, const char *str, int length);
 void       char_class_free  (CharClass *cc);
 void       char_class_print (CharClass *cc);
 
@@ -60,11 +60,10 @@ typedef enum {
 } TransitionType;
 
 typedef struct {
-    TransitionType type;
     State *to;
     State *ret;
-    char c;
-    CharClass *cc;
+    TransitionType type;
+    void *param;
 } Transition;
 
 State      *state_new      (Rx *rx);
@@ -97,6 +96,7 @@ struct Rx {
     List       *captures;
     List       *clusters;
     List       *subrules;
+    List       *charclasses;
 };
 
 Rx *rx_extend (Rx *parent);
