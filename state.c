@@ -19,6 +19,55 @@ transition_free (Transition *t) {
 }
 
 State *
+transition_state (State *a, State *b, TransitionType type, void *param) {
+    if (!b)
+        b = state_new(a->group);
+    transition_new(a, b, NULL, type, param);
+    return b;
+}
+
+State *
+transition_to_group (State *a, State *g, State *h,
+                     TransitionType type, void *param) {
+    State *b = state_new(a->group);
+    transition_new(a, g, b, type, param);
+    return b;
+}
+
+State *
+quantify (State *a, State *b, int min, int max) {
+    State *g, *h;
+    int i;
+    if (min == 0 && max == 0) {
+        transition_new(b, a, NULL, 0, NULL);
+        return a;
+    }
+    if (min == 1 && max == 0) {
+        transition_new(b, a, NULL, 0, NULL);
+        return b;
+    }
+    if (min == 0 && max == 1) {
+        transition_new(a, b, NULL, 0, NULL);
+        return b;
+    }
+    g = state_split(a);
+    h = b;
+    b = a;
+    for (i = 0; i < min; i++) {
+        b = transition_to_group(b, g, h, 0, NULL);
+    }
+    for (i = 0; i < max - min; i++) {
+        State *b2 = transition_to_group(b, g, h, 0, NULL);
+        transition_new(b, b2, NULL, 0, NULL);
+        b = b2;
+    }
+    if (max == 0) {
+        transition_new(b, g, b, 0, NULL);
+    }
+    return b;
+}
+
+State *
 state_new (Rx *rx) {
     State *state = calloc(1, sizeof (State));
     rx->states = list_push(rx->states, state);

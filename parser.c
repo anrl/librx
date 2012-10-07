@@ -27,26 +27,21 @@ integer (Parser *p, const char *pos, const char **fin) {
 static int
 captureref (Parser *p, const char *pos, const char **fin) {
     /* captureref: '~~' <integer>?  */
-    Transition *t;
+    int capture = -1;
     if (*pos++ != '~')
         return 0;
     if (*pos++ != '~')
         return 0;
-    t = transition_new(p->rx->end, NULL, state_new(p->rx), 0, NULL);
-    p->rx->end = t->ret;
     if (integer(p, pos, fin)) {
-        int capture = atoi(pos);
+        capture = atoi(pos);
         if (capture < 0) {
             p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
-        t->type = CAPTURE;
-        t->param = INT_TO_POINTER(capture);
         pos = *fin;
     }
-    else {
-        t->to = p->top->start;
-    }
+    p->rx->end = transition_to_group(
+        p->rx->end, NULL, NULL, CAPTUREREF, INT_TO_POINTER(capture));
     *fin = pos;
     return 1;
 }
@@ -174,7 +169,6 @@ char_class (Parser *p, const char *pos, const char **fin, List **cc) {
 static int
 char_class_combo (Parser *p, const char *pos, const char **fin) {
     /* char_class_combo: <[+-]>? <char_class> (<[+-]> <char_class>)*  */
-    Transition *t;
     List *actions;
     CharClass *cc;
     int container = CC_INCLUDES;
@@ -192,8 +186,7 @@ char_class_combo (Parser *p, const char *pos, const char **fin) {
     cc = char_class_new(p->rx, start - 1, 0);
     cc->actions = list_push(cc->actions, INT_TO_POINTER(container));
     cc->actions = list_cat(cc->actions, actions);
-    t = transition_new(p->rx->end, state_new(p->rx), NULL, EAT | CHARCLASS, cc);
-    p->rx->end = t->to;
+    p->rx->end = transition_state(p->rx->end, NULL, EAT|CHARCLASS, cc);
     while (1) {
         ws(pos, &pos);
         if (*pos != '+' && *pos != '-')
@@ -245,26 +238,25 @@ metasyntax (Parser *p, const char *pos, const char **fin) {
 static int
 group (Parser *p, const char *pos, const char **fin) {
     /* group: '(' <disjunction> ')' | '[' <disjunction> ']'  */
-    Rx *orig = p->rx;
-    Transition *t;
-    char ldelimeter = *pos++;
-    char rdelimeter;
+    Rx *orig = p->rx, *group;
+    char ldelimeter = *pos++, rdelimeter;
     switch (ldelimeter) {
         case '(': rdelimeter = ')'; break;
         case '[': rdelimeter = ']'; break;
         default: return 0;
     }
-    p->rx = rx_extend(orig);
+    group = rx_extend(orig);
     if (ldelimeter == '(')
-        orig->captures = list_push(orig->captures, p->rx);
+        orig->captures = list_push(orig->captures, group);
     else
-        orig->clusters = list_push(orig->clusters, p->rx);
+        orig->clusters = list_push(orig->clusters, group);
+    p->rx = group;
     disjunction(p, pos, fin);
+    p->rx = orig;
     if (p->error)
         return -1;
-    t = transition_new(orig->end, p->rx->start, state_new(orig), 0, NULL);
-    p->rx = orig;
-    p->rx->end = t->ret;
+    p->rx->end = transition_to_group(
+        p->rx->end, group->start, group->end, 0, NULL);
     pos = *fin;
     if (*pos != rdelimeter) {
         p->error = strdupf("expected '%c' at '%s'", rdelimeter, pos);
@@ -278,22 +270,18 @@ static int
 escape (Parser *p, const char *pos, const char **fin) {
     int type;
     void *value;
-    Transition *t;
     if (!escaped_char_class(p, pos, fin, &type, &value))
         return 0;
-    t = transition_new(p->rx->end, state_new(p->rx), NULL, 0, NULL);
-    p->rx->end = t->to;
     if (type == CC_FUNC || type == CC_NFUNC) {
-        CharClass *cc;
-        t->type = EAT | CHARCLASS;
-        cc = t->param = char_class_new(p->rx, pos - 2, 2);
+        CharClass *cc = char_class_new(p->rx, pos - 2, 2);
         cc->actions = list_push(cc->actions, INT_TO_POINTER(CC_INCLUDES));
         cc->actions = list_push(cc->actions, INT_TO_POINTER(type));
         cc->actions = list_push(cc->actions, value);
+        p->rx->end = transition_state(p->rx->end, NULL, EAT|CHARCLASS, cc);
     }
     else {
-        t->type = type == CC_CHAR ? EAT | CHAR : EAT | NEGCHAR;
-        t->param = value;
+        p->rx->end = transition_state(
+            p->rx->end, NULL, CC_CHAR ? EAT|CHAR : EAT|NEGCHAR, value);
     }
     return 1;
 }
@@ -309,9 +297,8 @@ quote (Parser *p, const char *pos, const char **fin) {
             pos = *fin;
         }
         else if (*pos && *pos != delimeter) {
-            Transition *t = transition_new(p->rx->end, state_new(p->rx), NULL,
-                                           EAT | CHAR, INT_TO_POINTER(*pos));
-            p->rx->end = t->to;
+            p->rx->end = transition_state(
+                p->rx->end, NULL, EAT|CHAR, INT_TO_POINTER(*pos));
             pos++;
         }
         else {
@@ -329,21 +316,19 @@ quote (Parser *p, const char *pos, const char **fin) {
 static int
 character (Parser *p, const char *pos, const char **fin) {
     /* character: <[a..zA..Z0..9_-.]>  */
-    Transition *t;
+    TransitionType type;
     if (!(isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.'))
         return 0;
-    t = transition_new(p->rx->end, state_new(p->rx), NULL, 0,
-                       INT_TO_POINTER(*pos));
-    t->type = *pos == '.' ? EAT | ANYCHAR : EAT | CHAR;
-    p->rx->end = t->to;
+    type = *pos == '.' ? EAT|ANYCHAR : EAT|CHAR;
+    p->rx->end = transition_state(p->rx->end, NULL, type, INT_TO_POINTER(*pos));
     *fin = ++pos;
     return 1;
 }
 
 static int
-quantifier_vars (Parser *p, const char *pos, const char **fin, int *min, int *max) {
-    /* quantifier_vars: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
-    *min = *max = 1;
+quantifier (Parser *p, const char *pos, const char **fin, State *start) {
+    /* quantifier: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
+    int min = 1, max = 1;
     if (!strncmp(pos, "**", 2)) {
         pos += 2;
         ws(pos, &pos);
@@ -351,8 +336,8 @@ quantifier_vars (Parser *p, const char *pos, const char **fin, int *min, int *ma
             p->error = strdupf("expected integer at '%s'", pos);
             return -1;
         }
-        *min = *max = atoi(pos);
-        if (*min < 0) {
+        min = max = atoi(pos);
+        if (min < 0) {
             p->error = strdupf("only non negative ints allowed at '%s'", pos);
             return -1;
         }
@@ -363,15 +348,15 @@ quantifier_vars (Parser *p, const char *pos, const char **fin, int *min, int *ma
             pos += 2;
             ws(pos, &pos);
             if (integer(p, pos, fin)) {
-                *max = atoi(pos);
-                if (*max <= *min) {
+                max = atoi(pos);
+                if (max <= min) {
                     p->error = strdupf("can't do ** n..m with m <= n at '%s'", pos);
                     return -1;
                 }
                 pos = *fin;
             }
             else if (*pos == '*') {
-                *max = 0;
+                max = 0;
                 pos++;
             }
             else {
@@ -381,68 +366,25 @@ quantifier_vars (Parser *p, const char *pos, const char **fin, int *min, int *ma
         }
     }
     else if (*pos == '*') {
-        *min = 0;
-        *max = 0;
+        min = 0;
+        max = 0;
         pos++;
     }
     else if (*pos == '+') {
-        *min = 1;
-        *max = 0;
+        min = 1;
+        max = 0;
         pos++;
     }
     else if (*pos == '?') {
-        *min = 0;
-        *max = 1;
+        min = 0;
+        max = 1;
         pos++;
     }
     else {
         return 0;
     }
     *fin = pos;
-    return 1;
-}
-
-static int
-quantifier (Parser *p, const char *pos, const char **fin, State *start) {
-    /* quantifier: <quantifier_vars>  */
-    int i, min, max;
-    if (!quantifier_vars(p, pos, fin, &min, &max))
-        return 0;
-    if (p->error)
-        return -1;
-    if (min == 0 && max == 0) {
-        transition_new(p->rx->end, start, NULL, 0, NULL);
-        p->rx->end = start;
-    }
-    else if (min == 1 && max == 0) {
-        transition_new(p->rx->end, start, NULL, 0, NULL);
-    }
-    else if (min == 0 && max == 1) {
-        transition_new(start, p->rx->end, NULL, 0, NULL);
-    }
-    else {
-        State *atom = state_split(start);
-        p->rx->end = start;
-        for (i = 0; i < min; i++) {
-            Transition *t = transition_new(
-                p->rx->end, atom, state_new(p->rx), 0, NULL);
-            p->rx->end = t->ret;
-        }
-        if (max > min) {
-            State *end = state_new(p->rx);
-            transition_new(p->rx->end, end, NULL, 0, NULL);
-            for (i = 0; i < max - min; i++) {
-                Transition *t = transition_new(
-                    p->rx->end, atom, state_new(p->rx), 0, NULL);
-                transition_new(t->ret, end, NULL, 0, NULL);
-                p->rx->end = t->ret;
-            }
-            p->rx->end = end;
-        }
-        if (!max) {
-            transition_new(p->rx->end, atom, p->rx->end, 0, NULL);
-        }
-    }
+    p->rx->end = quantify(start, p->rx->end, min, max);
     return 1;
 }
 
@@ -532,16 +474,16 @@ static int
 disjunction (Parser *p, const char *pos, const char **fin) {
     /* disjuntion: '|'? <conjunction> ('|' <conjunction>)*  */
     State *start = p->rx->end;
-    State *end = state_new(p->rx);
+    State *end = NULL;
     ws(pos, &pos);
     if (*pos == '|')
         pos++;
     while (1) {
+        p->rx->end = start;
         conjunction(p, pos, &pos);
         if (p->error)
             return -1;
-        transition_new(p->rx->end, end, NULL, 0, NULL);
-        p->rx->end = start;
+        end = transition_state(p->rx->end, end, 0, NULL);
         ws(pos, &pos);
         if (*pos == '|')
             pos++;

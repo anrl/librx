@@ -51,12 +51,12 @@ typedef struct {
 } State;
 
 typedef enum {
-    EAT       = 1 << 0,
-    CHAR      = 1 << 1,
-    ANYCHAR   = 1 << 2,
-    NEGCHAR   = 1 << 3,
-    CHARCLASS = 1 << 4,
-    CAPTURE   = 1 << 5
+    EAT        = 1 << 0,
+    CHAR       = 1 << 1,
+    ANYCHAR    = 1 << 2,
+    NEGCHAR    = 1 << 3,
+    CHARCLASS  = 1 << 4,
+    CAPTUREREF = 1 << 5
 } TransitionType;
 
 typedef struct {
@@ -66,11 +66,17 @@ typedef struct {
     void *param;
 } Transition;
 
-State      *state_new      (Rx *rx);
-State      *state_split    (State *state);
-void        state_free     (State *state);
-Transition *transition_new (State *from, State *to, State *ret,
-                            TransitionType type, void *param);
+State      *state_new           (Rx *rx);
+State      *state_split         (State *state);
+void        state_free          (State *state);
+Transition *transition_new      (State *from, State *to, State *ret,
+                                 TransitionType type, void *param);
+void        transition_free     (Transition *t);
+State      *transition_state    (State *a, State *b,
+                                 TransitionType type, void *param);
+State      *transition_to_group (State *a, State *g, State *h,
+                                 TransitionType type, void *param);
+State      *quantify            (State *a, State *b, int min, int max);
 
 /* assertions  */
 int isword (int c);
