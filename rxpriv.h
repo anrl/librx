@@ -62,7 +62,7 @@ typedef enum {
 typedef struct {
     State *to;
     State *ret;
-    TransitionType type;
+    int type;
     void *param;
 } Transition;
 
@@ -70,12 +70,11 @@ State      *state_new           (Rx *rx);
 State      *state_split         (State *state);
 void        state_free          (State *state);
 Transition *transition_new      (State *from, State *to, State *ret,
-                                 TransitionType type, void *param);
+                                 int type, void *param);
 void        transition_free     (Transition *t);
-State      *transition_state    (State *a, State *b,
-                                 TransitionType type, void *param);
+State      *transition_state    (State *a, State *b, int type, void *param);
 State      *transition_to_group (State *a, State *g, State *h,
-                                 TransitionType type, void *param);
+                                 int type, void *param);
 State      *quantify            (State *a, State *b, int min, int max);
 
 /* assertions  */

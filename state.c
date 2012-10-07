@@ -3,7 +3,7 @@
 #include "rxpriv.h"
 
 Transition *
-transition_new (State *from, State *to, State *ret, TransitionType type, void *param) {
+transition_new (State *from, State *to, State *ret, int type, void *param) {
     Transition *t = calloc(1, sizeof (Transition));
     t->to = to;
     t->ret = ret;
@@ -19,7 +19,7 @@ transition_free (Transition *t) {
 }
 
 State *
-transition_state (State *a, State *b, TransitionType type, void *param) {
+transition_state (State *a, State *b, int type, void *param) {
     if (!b)
         b = state_new(a->group);
     transition_new(a, b, NULL, type, param);
@@ -27,8 +27,7 @@ transition_state (State *a, State *b, TransitionType type, void *param) {
 }
 
 State *
-transition_to_group (State *a, State *g, State *h,
-                     TransitionType type, void *param) {
+transition_to_group (State *a, State *g, State *h, int type, void *param) {
     State *b = state_new(a->group);
     transition_new(a, g, b, type, param);
     return b;

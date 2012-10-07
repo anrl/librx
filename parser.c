@@ -316,7 +316,7 @@ quote (Parser *p, const char *pos, const char **fin) {
 static int
 character (Parser *p, const char *pos, const char **fin) {
     /* character: <[a..zA..Z0..9_-.]>  */
-    TransitionType type;
+    int type;
     if (!(isalnum(*pos) || *pos == '_' || *pos == '-' || *pos == '.'))
         return 0;
     type = *pos == '.' ? EAT|ANYCHAR : EAT|CHAR;
