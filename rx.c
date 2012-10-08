@@ -58,7 +58,7 @@ set_lookup (void **set, int n, void *key) {
 }
 
 static void
-rx_print_state (Rx *rx, State *state, void **visited, int n) {
+rx_print_state (Rx *rx, State *state, int backwards, void **visited, int n) {
     List *elem;
     if (!state)
         return;
@@ -71,7 +71,8 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
     if (rx->end == state)
         printf(" [fillcolor=yellow,style=filled]");
     printf("\n");
-    for (elem = state->transitions; elem; elem = elem->next) {
+    elem = backwards ? state->backtransitions : state->transitions;
+    for (; elem; elem = elem->next) {
         Transition *t = elem->data;
         printf("\"%p\" -> \"%p\"", state, t->to);
         if (t->type & (CHAR | ANYCHAR) && isgraph(POINTER_TO_INT(t->param)))
@@ -84,34 +85,18 @@ rx_print_state (Rx *rx, State *state, void **visited, int n) {
         if (t->ret)
             printf(" [color=blue,style=dotted,label=\"return to %p\"]", t->ret);
         printf("\n");
-        rx_print_state(rx, t->to, visited, n);
-        rx_print_state(rx, t->ret, visited, n);
+        rx_print_state(rx, t->to, backwards, visited, n);
+        rx_print_state(rx, t->ret, backwards, visited, n);
     }
 }
 
 void
-rx_print (Rx *rx) {
+rx_print (Rx *rx, int backwards) {
     void *visited[4096] = {0};
+    int n = sizeof visited / sizeof visited[0];
+    State *start = backwards ? rx->end : rx->start;
     printf("digraph G {\n");
-    rx_print_state(rx, rx->start, visited, sizeof visited / sizeof visited[0]);
+    rx_print_state(rx, start, backwards, visited, n);
     printf("}\n");
 }
-
-/*
-hmmm... case where longest isnt greedy
-'abbbbb' =~ /(ab)*(ab*)* /
-
-All possible matches will be found regarding greedy and non greedy.
-
-Grouping will cause the creation of a new regex and the nfa will only reference
-it. That way thay can be reused either by number or name later in the regex.
-This allows for matching things like balanced parentheses.
-
-Im not sure what to do about empty atoms '', "", <?> etc. If quantified (''*)
-they will cause an infinite loop which the matcher currently cant get out of.
-Perhaps if I keep track of the min number of characters a group or atom can
-match and ignore quantifiers if 0. Same issue with (a*)*. I believe Perl keeps
-track of what min length each thing can match to figure its way out of this
-case.
-*/
 
