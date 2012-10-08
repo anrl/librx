@@ -98,6 +98,8 @@ state_split (State *state) {
     State *next = state_new(state->group);
     next->transitions = state->transitions;
     state->transitions = NULL;
+    next->backtransitions = state->backtransitions;
+    state->backtransitions = NULL;
     next->assertfunc = state->assertfunc;
     state->assertfunc = NULL;
     return next;
