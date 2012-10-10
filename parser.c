@@ -326,7 +326,7 @@ character (Parser *p, const char *pos, const char **fin) {
 }
 
 static int
-quantifier (Parser *p, const char *pos, const char **fin, State *start) {
+quantifier (Parser *p, const char *pos, const char **fin, State **start) {
     /* quantifier: '**' \d+ ('..' (\d+ | '*'))? | '*' | '+' | '?'  */
     int min = 1, max = 1;
     if (!strncmp(pos, "**", 2)) {
@@ -384,7 +384,7 @@ quantifier (Parser *p, const char *pos, const char **fin, State *start) {
         return 0;
     }
     *fin = pos;
-    p->rx->end = quantify(start, p->rx->end, min, max);
+    quantify(start, &p->rx->end, min, max);
     return 1;
 }
 
@@ -433,24 +433,29 @@ static int
 atom (Parser *p, const char *pos, const char **fin) {
     /* atom: <assertion> | (<character> | <escape> | <group> | <metasyntax> |
              <quote>) <quantifier>  */
-    State *start = p->rx->end;
+    State *prior, *start;
     int amatch;
     ws(pos, &pos);
     if (assertion(p, pos, &pos)) {
         *fin = pos;
         return 1;
     }
+    prior = p->rx->end;
+    start = p->rx->end = state_new(p->rx);
     amatch = character(p, pos, &pos) ||
              escape(p, pos, &pos) ||
              group(p, pos, &pos) ||
              metasyntax(p, pos, &pos) ||
              quote(p, pos, &pos);
-    if (!amatch)
-        return 0;
     if (p->error)
         return -1;
+    if (!amatch) {
+        p->rx->end = prior;
+        return 0;
+    }
     ws(pos, &pos);
-    quantifier(p, pos, &pos, start);
+    quantifier(p, pos, &pos, &start);
+    transition_state(prior, start, 0, NULL);
     if (p->error)
         return -1;
     *fin = pos;

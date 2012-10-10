@@ -46,43 +46,27 @@ transition_to_group (State *a, State *g, State *h, int type, void *param) {
     return b;
 }
 
-State *
-quantify (State *a, State *b, int min, int max) {
-    State *g, *h;
+void
+quantify (State **a, State **b, int min, int max) {
+    State *g = *a, *h = *b;
     int i;
-    if (min == 0 && max == 0) {
-        transition_new(b, a, NULL, 0, NULL);
-        back_transition_new(a, b, NULL, 0, NULL);
-        back_transition_new(b, a, NULL, 0, NULL);
-        return a;
+    if (min == 1 && max == 1) {
+        return;
     }
-    if (min == 1 && max == 0) {
-        transition_new(b, a, NULL, 0, NULL);
-        back_transition_new(a, b, NULL, 0, NULL);
-        return b;
-    }
-    if (min == 0 && max == 1) {
-        transition_new(a, b, NULL, 0, NULL);
-        back_transition_new(b, a, NULL, 0, NULL);
-        return b;
-    }
-    g = state_split(a);
-    h = b;
-    b = a;
+    *a = *b = state_new(g->group);
     for (i = 0; i < min; i++) {
-        b = transition_to_group(b, g, h, 0, NULL);
+        *b = transition_to_group(*b, g, h, 0, NULL);
     }
     for (i = 0; i < max - min; i++) {
-        State *b2 = transition_to_group(b, g, h, 0, NULL);
-        transition_new(b, b2, NULL, 0, NULL);
-        back_transition_new(b2, b, NULL, 0, NULL);
-        b = b2;
+        State *c = transition_to_group(*b, g, h, 0, NULL);
+        transition_new(*b, c, NULL, 0, NULL);
+        back_transition_new(c, *b, NULL, 0, NULL);
+        *b = c;
     }
     if (max == 0) {
-        transition_new(b, g, b, 0, NULL);
-        back_transition_new(b, h, b, 0, NULL);
+        transition_new(*b, g, *b, 0, NULL);
+        back_transition_new(*b, h, *b, 0, NULL);
     }
-    return b;
 }
 
 State *

@@ -83,7 +83,7 @@ rx_print_state (Rx *rx, State *state, int backwards, void **visited, int n) {
                 cc->length == 2 ? "\\" : "", cc->length, cc->str);
         }
         if (t->ret)
-            printf(" [color=blue,style=dotted,label=\"return to %p\"]", t->ret);
+            printf(" [label=\"return to %p\"]", t->ret);
         printf("\n");
         rx_print_state(rx, t->to, backwards, visited, n);
         rx_print_state(rx, t->ret, backwards, visited, n);

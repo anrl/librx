@@ -76,7 +76,7 @@ void        transition_free     (Transition *t);
 State      *transition_state    (State *a, State *b, int type, void *param);
 State      *transition_to_group (State *a, State *g, State *h,
                                  int type, void *param);
-State      *quantify            (State *a, State *b, int min, int max);
+void        quantify            (State **a, State **b, int min, int max);
 
 /* assertions  */
 int isword (int c);
