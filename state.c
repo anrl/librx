@@ -46,27 +46,26 @@ transition_to_group (State *a, State *g, State *h, int type, void *param) {
     return b;
 }
 
+static Quantified *
+quantified_new (Rx *rx, int min, int max) {
+    Quantified *q = calloc(1, sizeof (Quantified));
+    q->min = min;
+    q->max = max;
+    rx->quantifications = list_push(rx->quantifications, q);
+    return q;
+}
+
 void
 quantify (State **a, State **b, int min, int max) {
-    State *g = *a, *h = *b;
-    int i;
-    if (min == 1 && max == 1) {
+    State *g, *h;
+    Quantified *q;
+    if (min == 1 && max == 1)
         return;
-    }
-    *a = *b = state_new(g->group);
-    for (i = 0; i < min; i++) {
-        *b = transition_to_group(*b, g, h, 0, NULL);
-    }
-    for (i = 0; i < max - min; i++) {
-        State *c = transition_to_group(*b, g, h, 0, NULL);
-        transition_new(*b, c, NULL, 0, NULL);
-        back_transition_new(c, *b, NULL, 0, NULL);
-        *b = c;
-    }
-    if (max == 0) {
-        transition_new(*b, g, *b, 0, NULL);
-        back_transition_new(*b, h, *b, 0, NULL);
-    }
+    g = *a;
+    h = *b;
+    *a = state_new(g->group);
+    q = quantified_new(g->group, min, max);
+    *b = transition_to_group(*a, g, h, QUANTIFIED, q);
 }
 
 State *

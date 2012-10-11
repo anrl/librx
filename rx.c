@@ -25,6 +25,7 @@ rx_free (Rx *rx) {
     list_free(rx->subrules, rx_free);
     list_free(rx->extends, NULL);
     list_free(rx->charclasses, char_class_free);
+    list_free(rx->quantifications, NULL);
     free(rx);
 }
 
@@ -75,15 +76,21 @@ rx_print_state (Rx *rx, State *state, int backwards, void **visited, int n) {
     for (; elem; elem = elem->next) {
         Transition *t = elem->data;
         printf("\"%p\" -> \"%p\"", state, t->to);
-        if (t->type & (CHAR | ANYCHAR) && isgraph(POINTER_TO_INT(t->param)))
+        if (t->type & (CHAR | ANYCHAR) && isgraph(POINTER_TO_INT(t->param))) {
             printf(" [label=\"%c\"]", POINTER_TO_INT(t->param));
-        if (t->type & CHARCLASS) {
+        }
+        else if (t->type & CHARCLASS) {
             CharClass *cc = t->param;
             printf(" [label=\"%s%.*s\"]",
                 cc->length == 2 ? "\\" : "", cc->length, cc->str);
         }
-        if (t->ret)
+        else if (t->type & QUANTIFIED) {
+            Quantified *q = t->param;
+            printf(" [label=\"qfy %d..%d to %p\"]", q->min, q->max, t->ret);
+        }
+        else if (t->ret) {
             printf(" [label=\"return to %p\"]", t->ret);
+        }
         printf("\n");
         rx_print_state(rx, t->to, backwards, visited, n);
         rx_print_state(rx, t->ret, backwards, visited, n);

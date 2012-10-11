@@ -57,7 +57,8 @@ typedef enum {
     ANYCHAR    = 1 << 2,
     NEGCHAR    = 1 << 3,
     CHARCLASS  = 1 << 4,
-    CAPTUREREF = 1 << 5
+    CAPTUREREF = 1 << 5,
+    QUANTIFIED = 1 << 6
 } TransitionType;
 
 typedef struct {
@@ -66,6 +67,11 @@ typedef struct {
     int type;
     void *param;
 } Transition;
+
+typedef struct {
+    int min;
+    int max;
+} Quantified;
 
 State      *state_new           (Rx *rx);
 State      *state_split         (State *state);
@@ -104,6 +110,7 @@ struct Rx {
     List       *clusters;
     List       *subrules;
     List       *charclasses;
+    List       *quantifications;
 };
 
 Rx *rx_extend (Rx *parent);
