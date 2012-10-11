@@ -6,6 +6,7 @@ main (int argc, char **argv) {
     char buffer[16384];
     char *string;
     char *regex;
+    int retval;
     Rx *rx;
     if (argc != 2 && argc != 3) {
         fprintf(stderr, "usage: ./rxtry [string] regex\n");
@@ -23,7 +24,8 @@ main (int argc, char **argv) {
     rx = rx_new(regex);
     if (!rx)
         return 0;
-    rx_match(rx, string);
+    retval = rx_match(rx, string);
+    printf("match returned %d\n", retval);
     rx_free(rx);
     return 0;
 }
