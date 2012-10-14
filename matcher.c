@@ -16,18 +16,15 @@ static int match_state ();
 static int
 match_quantified (Match *m, State *g, State *b, Quantified *q, int n,
                   const char *pos, const char **fin) {
-    printf("min: %d, max: %d, n: %d\n", q->min, q->max, n);
     for (; n < q->min; n++) {
         if (!match_state(m, g, pos, &pos))
             return 0;
     }
-    printf("n: %d\n", n);
     if (q->max && n >= q->max)
         return match_state(m, b, pos, fin);
-    else if (match_state(m, g, pos, fin) && match_quantified(m, g, b, q, n + 1, *fin, fin))
-        return 1;
-    else
-        return match_state(m, b, pos, fin);
+    return match_state(m, g, pos, fin) &&
+           match_quantified(m, g, b, q, n + 1, *fin, fin) ||
+           match_state(m, b, pos, fin);
 }
 
 static int
