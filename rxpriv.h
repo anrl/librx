@@ -17,6 +17,7 @@ struct List {
 
 List *list_push      (List *list, void *data);
 List *list_pop       (List *list, void *dump);
+List *list_shift     (List *list, void *dump);
 List *list_unshift   (List *list, void *data);
 List *list_cat       (List *a, List *b);
 void *list_last_data (List *list);

@@ -24,6 +24,35 @@ list_unshift (List *list, void *data) {
 }
 
 List *
+list_pop (List *list, void *dump) {
+    List *last, *prev;
+    if (!list)
+        return NULL;
+    for (prev = NULL, last = list; last->next; prev = last, last = last->next)
+        ;
+    if (prev)
+        prev->next = NULL;
+    if (dump)
+        * (void **) dump = last->data;
+    free(last);
+    if (last == list)
+        return NULL;
+    return list;
+}
+
+List *
+list_shift (List *list, void *dump) {
+    List *next;
+    if (!list)
+        return NULL;
+    if (dump)
+        * (void **) dump = list->data;
+    next = list->next;
+    free(list);
+    return next;
+}
+
+List *
 list_copy (List *list) {
     List *item;
     List *new = NULL;
@@ -58,23 +87,6 @@ list_nth_data (List *list, int n) {
             return list->data;
     }
     return NULL;
-}
-
-List *
-list_pop (List *list, void *dump) {
-    List *last, *prev;
-    if (!list)
-        return NULL;
-    for (prev = NULL, last = list; last->next; prev = last, last = last->next)
-        ;
-    if (prev)
-        prev->next = NULL;
-    if (dump)
-        * (void **) dump = last->data;
-    free(last);
-    if (last == list)
-        return NULL;
-    return list;
 }
 
 List *
