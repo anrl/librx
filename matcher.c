@@ -28,39 +28,28 @@ match_quantified (Match *m, State *g, State *b, Quantified *q, int n,
 }
 
 static int
-transition_useable (Transition *t, const char *pos) {
-    if (t->type & EAT && !*pos) {
+match_char (Match *m, State *state, char c, int eat, const char *pos, const char **fin) {
+    if (c != *pos)
         return 0;
-    }
-    else if (t->type & CHAR) {
-        return POINTER_TO_INT(t->param) == *pos;
-    }
-    else if (t->type & NEGCHAR) {
-        return POINTER_TO_INT(t->param) == *pos;
-    }
-    else if (t->type & QUANTIFIED) {
-        return 1;
-    }
-    else if (t->type) {
-        printf("unrecognized type %d\n", t->type);
-        return 0;
-    }
-    else {
-        return 1;
-    }
+    if (eat)
+        pos++;
+    return match_state(m, state, pos, fin);
 }
 
 static int
 match_transition (Match *m, Transition *t, const char *pos, const char **fin) {
-    if (!transition_useable(t, pos))
-        return 0;
     if (t->type & QUANTIFIED)
         return match_quantified(m, t->to, t->ret, t->param, 0, pos, fin);
-    if (t->ret)
-        return match_state(m, t->to, pos, &pos) && match_state(m, t->ret, pos, fin);
-    if (t->type & EAT)
-        return match_state(m, t->to, pos + 1, fin);
-    return match_state(m, t->to, pos, fin);
+    else if (t->ret)
+        return match_state(m, t->to, pos, fin) &&
+               match_state(m, t->ret, *fin, fin);
+    else if (t->type & CHAR)
+        return match_char(
+            m, t->to, POINTER_TO_INT(t->param), t->type & EAT, pos, fin);
+    else if (!t->type)
+        return match_state(m, t->to, pos, fin);
+    printf("unrecognized transition type %d\n", t->type);
+    return 0;
 }
 
 static int
